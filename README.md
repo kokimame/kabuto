@@ -1,52 +1,34 @@
-# ![freqtrade](https://raw.githubusercontent.com/freqtrade/freqtrade/develop/docs/assets/freqtrade_poweredby.svg)
+# SpearBird
 
-[![Freqtrade CI](https://github.com/freqtrade/freqtrade/workflows/Freqtrade%20CI/badge.svg)](https://github.com/freqtrade/freqtrade/actions/)
-[![Coverage Status](https://coveralls.io/repos/github/freqtrade/freqtrade/badge.svg?branch=develop&service=github)](https://coveralls.io/github/freqtrade/freqtrade?branch=develop)
-[![Documentation](https://readthedocs.org/projects/freqtrade/badge/)](https://www.freqtrade.io)
-[![Maintainability](https://api.codeclimate.com/v1/badges/5737e6d668200b7518ff/maintainability)](https://codeclimate.com/github/freqtrade/freqtrade/maintainability)
 
-Freqtrade is a free and open source crypto trading bot written in Python. It is designed to support all major exchanges and be controlled via Telegram. It contains backtesting, plotting and money management tools as well as strategy optimization by machine learning.
+SpearBirdは無料かつオープンソースの日本株式取引botです。
+LINE上で主な取引を管理・操作することが可能です。バックテストや可視化、資産運用、機械学習による取引戦略の最適化といった機能を備えています。
+ソフトウェアのバックエンドは [freqtrade](https://github.com/freqtrade/freqtrade) を元に開発しており、
+株取引のAPIには [kabu STATION API](https://kabu.com/company/lp/lp90.html) を用います。
 
-![freqtrade](https://raw.githubusercontent.com/freqtrade/freqtrade/develop/docs/assets/freqtrade-screenshot.png)
+## 注意
+このソフトウェアは教育目的の使用に限られます。
 
-## Disclaimer
-
-This software is for educational purposes only. Do not risk money which
-you are afraid to lose. USE THE SOFTWARE AT YOUR OWN RISK. THE AUTHORS
-AND ALL AFFILIATES ASSUME NO RESPONSIBILITY FOR YOUR TRADING RESULTS.
-
-Always start by running a trading bot in Dry-run and do not engage money
-before you understand how it works and what profit/loss you should
-expect.
-
-We strongly recommend you to have coding and Python knowledge. Do not
-hesitate to read the source code and understand the mechanism of this bot.
-
-## Supported Exchange marketplaces
+## 取引可能な市場
 
 Please read the [exchange specific notes](docs/exchanges.md) to learn about eventual, special configurations needed for each exchange.
 
-- [X] [Binance](https://www.binance.com/) ([*Note for binance users](docs/exchanges.md#binance-blacklist))
-- [X] [Bittrex](https://bittrex.com/)
-- [X] [Kraken](https://kraken.com/)
-- [X] [FTX](https://ftx.com)
-- [X] [Gate.io](https://www.gate.io/ref/6266643)
-- [ ] [potentially many others](https://github.com/ccxt/ccxt/). _(We cannot guarantee they will work)_
+- [X] nothing yet
 
-### Community tested
+### コミュニティ検証済み
 
 Exchanges confirmed working by the community:
 
 - [X] [Bitvavo](https://bitvavo.com/)
 - [X] [Kucoin](https://www.kucoin.com/)
 
-## Documentation
+## ドキュメント
 
 We invite you to read the bot documentation to ensure you understand how the bot is working.
 
 Please find the complete documentation on our [website](https://www.freqtrade.io).
 
-## Features
+## 機能
 
 - [x] **Based on Python 3.7+**: For botting on any operating system - Windows, macOS and Linux.
 - [x] **Persistence**: Persistence is achieved through sqlite.
@@ -61,7 +43,7 @@ Please find the complete documentation on our [website](https://www.freqtrade.io
 - [x] **Daily summary of profit/loss**: Provide a daily summary of your profit/loss.
 - [x] **Performance status report**: Provide a performance status of your current trades.
 
-## Quick start
+## さあ始めよう
 
 Freqtrade provides a Linux/macOS script to install all dependencies and help you to configure the bot.
 
@@ -73,9 +55,9 @@ cd freqtrade
 
 For any other type of installation please refer to [Installation doc](https://www.freqtrade.io/en/latest/installation/).
 
-## Basic Usage
+## 基本的な操作
 
-### Bot commands
+### Botコマンド
 
 ```
 usage: freqtrade [-h] [-V]
@@ -119,7 +101,7 @@ optional arguments:
 
 ```
 
-### Telegram RPC commands
+### LINE bot コマンド
 
 Telegram is not mandatory. However, this is a great way to control your bot. More details and the full command list on our [documentation](https://www.freqtrade.io/en/latest/telegram-usage/)
 
@@ -135,7 +117,7 @@ Telegram is not mandatory. However, this is a great way to control your bot. Mor
 - `/help`: Show help message.
 - `/version`: Show version.
 
-## Development branches
+## 開発ブランチ
 
 The project is currently setup in two main branches:
 
@@ -145,7 +127,7 @@ The project is currently setup in two main branches:
 
 ## Support
 
-### Help / Discord
+### ヘルプ / Discord
 
 For any questions not covered by the documentation or for further information about the bot, or to simply engage with like-minded individuals, we encourage you to join the Freqtrade [discord server](https://discord.gg/p7nuUNVfP7).
 
