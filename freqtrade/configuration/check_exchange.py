@@ -28,6 +28,10 @@ def check_exchange(config: Dict[str, Any], check_for_bad: bool = True) -> bool:
     logger.info("Checking exchange...")
 
     exchange = config.get('exchange', {}).get('name').lower()
+    if exchange == 'tse':
+        logger.info(f'Exchange "tse" (Tokyo Stock Exchange) is under development. '
+                    f'We hack the economy from here!')
+        return True
     if not exchange:
         raise OperationalException(
             f'This command requires a configured exchange. You should either use '

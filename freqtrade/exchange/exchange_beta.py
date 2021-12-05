@@ -19,6 +19,7 @@ from ccxt.base.decimal_to_precision import (ROUND_DOWN, ROUND_UP, TICK_SIZE, TRU
                                             decimal_to_precision)
 from pandas import DataFrame
 
+from freqtrade.sxt import API
 from freqtrade.constants import (DEFAULT_AMOUNT_RESERVE_PERCENT, NON_OPEN_EXCHANGE_STATES,
                                  ListPairsWithTimeframes)
 from freqtrade.data.converter import ohlcv_to_dataframe, trades_dict_to_list
@@ -44,7 +45,7 @@ logger = logging.getLogger(__name__)
 http.cookies.Morsel._reserved["samesite"] = "SameSite"  # type: ignore
 
 
-class Exchange:
+class ExchangeBeta:
 
     _config: Dict = {}
 
@@ -80,7 +81,7 @@ class Exchange:
         it does basic validation whether the specified exchange and pairs are valid.
         :return: None
         """
-        self._api: ccxt.Exchange = None
+        self._api = None
         self._api_async: ccxt_async.Exchange = None
         self._markets: Dict = {}
 
@@ -130,15 +131,15 @@ class Exchange:
         ccxt_config = deep_merge_dicts(exchange_config.get('ccxt_config', {}), ccxt_config)
         ccxt_config = deep_merge_dicts(exchange_config.get('ccxt_sync_config', {}), ccxt_config)
 
-        self._api = self._init_ccxt(exchange_config, ccxt_kwargs=ccxt_config)
+        self._api = self._init_api(exchange_config)
 
-        ccxt_async_config = self._ccxt_config.copy()
-        ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_config', {}),
-                                             ccxt_async_config)
-        ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_async_config', {}),
-                                             ccxt_async_config)
-        self._api_async = self._init_ccxt(
-            exchange_config, ccxt_async, ccxt_kwargs=ccxt_async_config)
+        # ccxt_async_config = self._ccxt_config.copy()
+        # ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_config', {}),
+        #                                      ccxt_async_config)
+        # ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_async_config', {}),
+        #                                      ccxt_async_config)
+        # self._api_async = self._init_ccxt(
+        #     exchange_config, ccxt_async, ccxt_kwargs=ccxt_async_config)
 
         logger.info('Using Exchange "%s"', self.name)
 
@@ -172,6 +173,13 @@ class Exchange:
         logger.debug("Exchange object destroyed, closing async loop")
         if self._api_async and inspect.iscoroutinefunction(self._api_async.close):
             asyncio.get_event_loop().run_until_complete(self._api_async.close())
+
+    def _init_api(self, exchange_config: Dict[str, Any]):
+        """
+        Do initialization of an API to access Tokyo Stock
+        Exchange here (e.g., kabu STATION API)
+        """
+        return API(exchange_config)
 
     def _init_ccxt(self, exchange_config: Dict[str, Any], ccxt_module: CcxtModuleType = ccxt,
                    ccxt_kwargs: Dict = {}) -> ccxt.Exchange:
@@ -300,10 +308,11 @@ class Exchange:
         By default, checks if it's splittable by `/` and both sides correspond to base / quote
         """
         symbol_parts = market['symbol'].split('/')
+
         return (len(symbol_parts) == 2 and
                 len(symbol_parts[0]) > 0 and
                 len(symbol_parts[1]) > 0 and
-                symbol_parts[0] == market.get('base') and
+                # symbol_parts[0] == market.get('base') and
                 symbol_parts[1] == market.get('quote')
                 )
 
@@ -316,12 +325,12 @@ class Exchange:
     def set_sandbox(self, api: ccxt.Exchange, exchange_config: dict, name: str) -> None:
         if exchange_config.get('sandbox'):
             if api.urls.get('test'):
-                api.urls['api'] = api.urls['test']
+                api.urls['sxt'] = api.urls['test']
                 logger.info("Enabled Sandbox API on %s", name)
             else:
                 logger.warning(
                     f"No Sandbox URL in CCXT for {name}, exiting. Please check your config.json")
-                raise OperationalException(f'Exchange {name} does not provide a sandbox api')
+                raise OperationalException(f'Exchange {name} does not provide a sandbox sxt')
 
     def _load_async_markets(self, reload: bool = False) -> None:
         try:
@@ -337,8 +346,8 @@ class Exchange:
         """ Initialize markets both sync and async """
         try:
             self._markets = self._api.load_markets()
-            self._load_async_markets()
-            self._last_markets_refresh = arrow.utcnow().int_timestamp
+            # self._load_async_markets()
+            # self._last_markets_refresh = arrow.utcnow().int_timestamp
         except ccxt.BaseError:
             logger.exception('Unable to initialize markets.')
 
@@ -370,7 +379,7 @@ class Exchange:
             raise OperationalException(
                 'Could not load markets, therefore cannot start. '
                 'Please investigate the above error for more details.'
-                )
+            )
         quote_currencies = self.get_quote_currencies()
         if stake_currency not in quote_currencies:
             raise OperationalException(
@@ -446,6 +455,7 @@ class Exchange:
 
         if timeframe and timeframe_to_minutes(timeframe) < 1:
             raise OperationalException("Timeframes < 1m are currently not supported by Freqtrade.")
+        logger.debug('validate_timeframes success')
 
     def validate_ordertypes(self, order_types: Dict) -> None:
         """
@@ -480,7 +490,7 @@ class Exchange:
         if startup_candles + 5 > candle_limit:
             raise OperationalException(
                 f"This strategy requires {startup_candles} candles to start. "
-                f"{self.name} only provides {candle_limit - 5} for {timeframe}.")
+                f"{self.name} only provides {candle_limit} for {timeframe}.")
 
     def exchange_has(self, endpoint: str) -> bool:
         """
@@ -523,7 +533,7 @@ class Exchange:
                 precision = self.markets[pair]['precision']['price']
                 missing = price % precision
                 if missing != 0:
-                    price = round(price - missing + precision, 10)
+                    price = price - missing + precision
             else:
                 symbol_prec = self.markets[pair]['precision']['price']
                 big_price = price * pow(10, symbol_prec)
@@ -975,7 +985,7 @@ class Exchange:
                                range_required: bool = True):
         """
         Get next greater value in the list.
-        Used by fetch_l2_order_book if the api only supports a limited range
+        Used by fetch_l2_order_book if the sxt only supports a limited range
         """
         if not limit_range:
             return limit
@@ -1058,7 +1068,7 @@ class Exchange:
             ticker_rate = ticker[conf_strategy['price_side']]
             if ticker['last'] and ticker_rate:
                 if side == 'buy' and ticker_rate > ticker['last']:
-                    balance = conf_strategy.get('ask_last_balance', 0.0)
+                    balance = conf_strategy['ask_last_balance']
                     ticker_rate = ticker_rate + balance * (ticker['last'] - ticker_rate)
                 elif side == 'sell' and ticker_rate < ticker['last']:
                     balance = conf_strategy.get('bid_last_balance', 0.0)

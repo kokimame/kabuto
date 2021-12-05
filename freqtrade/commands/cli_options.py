@@ -381,12 +381,12 @@ AVAILABLE_CLI_OPTIONS = {
     ),
     "dataformat_ohlcv": Arg(
         '--data-format-ohlcv',
-        help='Storage format for downloaded candle (OHLCV) data. (default: `%(default)s`).',
+        help='Storage format for downloaded candle (OHLCV) data. (default: `json`).',
         choices=constants.AVAILABLE_DATAHANDLERS,
     ),
     "dataformat_trades": Arg(
         '--data-format-trades',
-        help='Storage format for downloaded trades data. (default: `%(default)s`).',
+        help='Storage format for downloaded trades data. (default: `jsongz`).',
         choices=constants.AVAILABLE_DATAHANDLERS,
     ),
     "exchange": Arg(
@@ -413,6 +413,12 @@ AVAILABLE_CLI_OPTIONS = {
         help="Clean UI folder, don't download new version.",
         action='store_true',
         default=False,
+    ),
+    "ui_version": Arg(
+        '--ui-version',
+        help=('Specify a specific version of FreqUI to install. '
+              'Not specifying this installs the latest version.'),
+        type=str,
     ),
     # Templating options
     "template": Arg(
@@ -551,5 +557,11 @@ AVAILABLE_CLI_OPTIONS = {
         '--no-header',
         help='Do not print epoch details header.',
         action='store_true',
+    ),
+    "hyperopt_ignore_missing_space": Arg(
+        "--ignore-missing-spaces", "--ignore-unparameterized-spaces",
+        help=("Suppress errors for any requested Hyperopt spaces "
+              "that do not contain any parameters."),
+        action="store_true",
     ),
 }

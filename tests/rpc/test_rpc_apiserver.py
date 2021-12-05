@@ -95,7 +95,7 @@ def test_api_not_found(botclient):
     assert rc.json() == {"detail": "Not Found"}
 
 
-def test_api_ui_fallback(botclient):
+def test_api_ui_fallback(botclient, mocker):
     ftbot, client = botclient
 
     rc = client_get(client, "/favicon.ico")
@@ -109,9 +109,16 @@ def test_api_ui_fallback(botclient):
     rc = client_get(client, "/something")
     assert rc.status_code == 200
 
-    # Test directory traversal
+    # Test directory traversal without mock
     rc = client_get(client, '%2F%2F%2Fetc/passwd')
     assert rc.status_code == 200
+    # Allow both fallback or real UI
+    assert '`freqtrade install-ui`' in rc.text or '<!DOCTYPE html>' in rc.text
+
+    mocker.patch.object(Path, 'is_file', MagicMock(side_effect=[True, False]))
+    rc = client_get(client, '%2F%2F%2Fetc/passwd')
+    assert rc.status_code == 200
+
     assert '`freqtrade install-ui`' in rc.text
 
 
@@ -613,10 +620,11 @@ def test_api_delete_trade(botclient, mocker, fee, markets):
     assert_response(rc, 502)
 
     create_mock_trades(fee)
-    Trade.query.session.flush()
+
     ftbot.strategy.order_types['stoploss_on_exchange'] = True
     trades = Trade.query.all()
     trades[1].stoploss_order_id = '1234'
+    Trade.commit()
     assert len(trades) > 2
 
     rc = client_delete(client, f"{BASE_URI}/trades/1")
@@ -937,7 +945,7 @@ def test_api_blacklist(botclient, mocker):
                      data='{"blacklist": ["XRP/.*"]}')
     assert_response(rc)
     assert rc.json() == {"blacklist": ["DOGE/BTC", "HOT/BTC", "ETH/BTC", "XRP/.*"],
-                         "blacklist_expanded": ["ETH/BTC", "XRP/BTC"],
+                         "blacklist_expanded": ["ETH/BTC", "XRP/BTC", "XRP/USDT"],
                          "length": 4,
                          "method": ["StaticPairList"],
                          "errors": {},
@@ -1269,6 +1277,16 @@ def test_list_available_pairs(botclient):
     assert rc.json()['length'] == 1
     assert rc.json()['pairs'] == ['XRP/ETH']
     assert len(rc.json()['pair_interval']) == 1
+
+
+def test_sysinfo(botclient):
+    ftbot, client = botclient
+
+    rc = client_get(client, f"{BASE_URI}/sysinfo")
+    assert_response(rc)
+    result = rc.json()
+    assert 'cpu_pct' in result
+    assert 'ram_pct' in result
 
 
 def test_api_backtesting(botclient, mocker, fee, caplog):
