@@ -152,6 +152,12 @@ AVAILABLE_CLI_OPTIONS = {
         action='store_false',
         default=True,
     ),
+    "backtest_show_pair_list": Arg(
+        '--show-pair-list',
+        help='Show backtesting pairlist sorted by profit.',
+        action='store_true',
+        default=False,
+    ),
     "enable_protections": Arg(
         '--enable-protections', '--enableprotections',
         help='Enable protections for backtesting.'
@@ -192,6 +198,12 @@ AVAILABLE_CLI_OPTIONS = {
         help='Specify fee ratio. Will be applied twice (on trade entry and exit).',
         type=float,
         metavar='FLOAT',
+    ),
+    "backtest_breakdown": Arg(
+        '--breakdown',
+        help='Show backtesting breakdown per [day, week, month].',
+        nargs='+',
+        choices=constants.BACKTEST_BREAKDOWNS
     ),
     # Edge
     "stoploss_range": Arg(
@@ -354,6 +366,11 @@ AVAILABLE_CLI_OPTIONS = {
         help='Download data for given number of days.',
         type=check_int_positive,
         metavar='INT',
+    ),
+    "include_inactive": Arg(
+        '--include-inactive-pairs',
+        help='Also download data from inactive pairs.',
+        action='store_true',
     ),
     "new_pairs_days": Arg(
         '--new-pairs-days',
