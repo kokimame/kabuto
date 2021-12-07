@@ -1,32 +1,12 @@
-# SpearBird
+# kabuto
 
-
-SpearBirdは無料かつオープンソースの日本株式取引botです。
-LINE上で主な取引を管理・操作することが可能です。バックテストや可視化、資産運用、機械学習による取引戦略の最適化といった機能を備えています。
+kabutoは無料かつオープンソースの日本株式取引botです。
+バックテストや可視化、資産運用、機械学習による取引戦略の最適化といった機能を備えています。また、Telegram上で取引を管理・操作することが可能です。
 ソフトウェアのバックエンドは [freqtrade](https://github.com/freqtrade/freqtrade) を元に開発しており、
-株取引のAPIには [kabu STATION API](https://kabu.com/company/lp/lp90.html) を用います。
+株取引のAPIには [kabu STATION API](https://kabu.com/company/lp/lp90.html) を用いています。
 
 ## 注意
 このソフトウェアは教育目的の使用に限られます。
-
-## 取引可能な市場
-
-Please read the [exchange specific notes](docs/exchanges.md) to learn about eventual, special configurations needed for each exchange.
-
-- [X] nothing yet
-
-### コミュニティ検証済み
-
-Exchanges confirmed working by the community:
-
-- [X] [Bitvavo](https://bitvavo.com/)
-- [X] [Kucoin](https://www.kucoin.com/)
-
-## ドキュメント
-
-We invite you to read the bot documentation to ensure you understand how the bot is working.
-
-Please find the complete documentation on our [website](https://www.freqtrade.io).
 
 ## 機能
 
