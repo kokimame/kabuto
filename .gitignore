@@ -1,3 +1,4 @@
+credentials_DONT_UPLOAD.py
 # Freqtrade rules
 config*.json
 *.sqlite
