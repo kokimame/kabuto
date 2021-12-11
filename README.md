@@ -38,7 +38,6 @@ For any other type of installation please refer to [Installation doc](https://ww
 ## 基本的な操作
 
 ### Botコマンド
-
 ```
 usage: freqtrade [-h] [-V]
                  {trade,create-userdir,new-config,new-strategy,download-data,convert-data,convert-trade-data,list-data,backtesting,edge,hyperopt,hyperopt-list,hyperopt-show,list-exchanges,list-hyperopts,list-markets,list-pairs,list-strategies,list-timeframes,show-trades,test-pairlist,install-ui,plot-dataframe,plot-profit,webserver}
