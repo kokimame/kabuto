@@ -1,4 +1,5 @@
 credentials_DONT_UPLOAD.py
+playground/
 # Freqtrade rules
 config*.json
 *.sqlite
