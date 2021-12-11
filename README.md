@@ -1,8 +1,8 @@
 # kabuto
 
-kabutoは無料かつオープンソースの日本株式取引botです。
+kabutoは無料かつオープンソースの日本株向け自動取引プラットフォームです。
 バックテストや可視化、資産運用、機械学習による取引戦略の最適化といった機能を備えています。また、Telegram上で取引を管理・操作することが可能です。
-ソフトウェアのバックエンドは [freqtrade](https://github.com/freqtrade/freqtrade) を元に開発しており、
+プログラムのほとんどは [freqtrade](https://github.com/freqtrade/freqtrade) （仮想通貨専用の自動取引プラットフォーム）を元に開発しています。
 株取引のAPIには [kabu STATION API](https://kabu.com/company/lp/lp90.html) を用いています。
 
 ## 注意
