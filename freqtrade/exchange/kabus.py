@@ -1,12 +1,7 @@
-""" Tokyo Stock Exchange subclass """
+""" KabuStation subclass """
 import logging
-from typing import Dict, List
+from typing import Dict
 
-import arrow
-
-from freqtrade.exceptions import (DDosProtection, InsufficientFundsError, InvalidOrderException,
-                                  OperationalException, TemporaryError)
-from freqtrade.exchange.common import retrier
 from freqtrade.exchange.exchange_beta import ExchangeBeta
 
 logger = logging.getLogger(__name__)
@@ -14,8 +9,9 @@ logger = logging.getLogger(__name__)
 """
 Equivalent of what? ccxt/binance or freqtrade/binance?
 """
-class Tse(ExchangeBeta):
 
+
+class Kabus(ExchangeBeta):
     _ft_has: Dict = {
         'stoploss_on_exchange': True,
         'order_time_in_force': ['gtc', 'fok', 'ioc'],

@@ -70,8 +70,8 @@ except ImportError:
 class API(object):
 
     def __init__(self, config={}):
-        self.id = "tse"
-        self.name = "TokyoStockExchange"
+        self.id = "kabus"
+        self.name = "KabuStation"
         self.version = "v0"
         self.certified = False  # if certified by the CCXT dev team
         self.pro = False  # if it is integrated with CCXT Pro for WebSocket support
