@@ -8,6 +8,14 @@ try:
 except ImportError:
     eddsa = None
 
+
+# -----------------------------------------------------------------------------
+
+from ccxt.base.decimal_to_precision import decimal_to_precision
+from ccxt.base.decimal_to_precision import DECIMAL_PLACES, NO_PADDING, TRUNCATE, ROUND, ROUND_UP, ROUND_DOWN
+from ccxt.base.decimal_to_precision import number_to_string
+from ccxt.base.precise import Precise
+
 # -----------------------------------------------------------------------------
 
 __all__ = [
@@ -68,6 +76,202 @@ except ImportError:
 
 
 class API(object):
+    """Base exchange class"""
+    id = None
+    name = None
+    version = None
+    certified = False  # if certified by the CCXT dev team
+    pro = False  # if it is integrated with CCXT Pro for WebSocket support
+    alias = False  # whether this exchange is an alias to another exchange
+    # rate limiter settings
+    enableRateLimit = True
+    rateLimit = 2000  # milliseconds = seconds * 1000
+    timeout = 10000  # milliseconds = seconds * 1000
+    asyncio_loop = None
+    aiohttp_proxy = None
+    aiohttp_trust_env = False
+    session = None  # Session () by default
+    verify = True  # SSL verification
+    logger = None  # logging.getLogger(__name__) by default
+    userAgent = None
+    userAgents = {
+        'chrome': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36',
+        'chrome39': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36',
+    }
+    verbose = False
+    markets = None
+    symbols = None
+    codes = None
+    timeframes = None
+    fees = {
+        'trading': {
+            'percentage': True,  # subclasses should rarely have to redefine this
+        },
+        'funding': {
+            'withdraw': {},
+            'deposit': {},
+        },
+    }
+    loaded_fees = {
+        'trading': {
+            'percentage': True,
+        },
+        'funding': {
+            'withdraw': {},
+            'deposit': {},
+        },
+    }
+    ids = None
+    urls = None
+    api = None
+    parseJsonResponse = True
+    proxy = ''
+    origin = '*'  # CORS origin
+    proxies = None
+    hostname = None  # in case of inaccessibility of the "main" domain
+    apiKey = ''
+    secret = ''
+    password = ''
+    uid = ''
+    privateKey = ''  # a "0x"-prefixed hexstring private key for a wallet
+    walletAddress = ''  # the wallet address "0x"-prefixed hexstring
+    token = ''  # reserved for HTTP auth in some cases
+    twofa = None
+    markets_by_id = None
+    currencies_by_id = None
+    precision = None
+    exceptions = None
+    limits = {
+        'amount': {
+            'min': None,
+            'max': None,
+        },
+        'price': {
+            'min': None,
+            'max': None,
+        },
+        'cost': {
+            'min': None,
+            'max': None,
+        },
+    }
+
+    headers = None
+    balance = None
+    orderbooks = None
+    orders = None
+    myTrades = None
+    trades = None
+    transactions = None
+    ohlcvs = None
+    tickers = None
+    base_currencies = None
+    quote_currencies = None
+    currencies = None
+    options = None  # Python does not allow to define properties in run-time with setattr
+    accounts = None
+    positions = None
+
+    status = {
+        'status': 'ok',
+        'updated': None,
+        'eta': None,
+        'url': None,
+    }
+
+    requiredCredentials = {
+        'apiKey': True,
+        'secret': True,
+        'uid': False,
+        'login': False,
+        'password': False,
+        'twofa': False,  # 2-factor authentication (one-time password key)
+        'privateKey': False,  # a "0x"-prefixed hexstring private key for a wallet
+        'walletAddress': False,  # the wallet address "0x"-prefixed hexstring
+        'token': False,  # reserved for HTTP auth in some cases
+    }
+
+    # API method metainfo
+    has = {
+        'loadMarkets': True,
+        'cancelAllOrders': False,
+        'cancelOrder': True,
+        'cancelOrders': False,
+        'CORS': False,
+        'createDepositAddress': False,
+        'createLimitOrder': True,
+        'createMarketOrder': True,
+        'createOrder': True,
+        'deposit': False,
+        'editOrder': 'emulated',
+        'fetchBalance': True,
+        'fetchClosedOrders': False,
+        'fetchCurrencies': False,
+        'fetchDepositAddress': False,
+        'fetchDeposits': False,
+        'fetchL2OrderBook': True,
+        'fetchLedger': False,
+        'fetchMarkets': True,
+        'fetchMyTrades': False,
+        'fetchOHLCV': 'emulated',
+        'fetchOpenOrders': False,
+        'fetchOrder': False,
+        'fetchOrderBook': True,
+        'fetchOrderBooks': False,
+        'fetchOrders': False,
+        'fetchOrderTrades': False,
+        'fetchStatus': 'emulated',
+        'fetchTicker': True,
+        'fetchTickers': False,
+        'fetchTime': False,
+        'fetchTrades': True,
+        'fetchTradingFee': False,
+        'fetchTradingFees': False,
+        'fetchFundingFee': False,
+        'fetchFundingFees': False,
+        'fetchTradingLimits': False,
+        'fetchTransactions': False,
+        'fetchWithdrawals': False,
+        'privateAPI': True,
+        'publicAPI': True,
+        'signIn': False,
+        'withdraw': False,
+    }
+    precisionMode = DECIMAL_PLACES
+    paddingMode = NO_PADDING
+    minFundingAddressLength = 1  # used in check_address
+    substituteCommonCurrencyCodes = True
+    quoteJsonNumbers = True
+    number = float  # or str (a pointer to a class)
+    # whether fees should be summed by currency code
+    reduceFees = True
+    lastRestRequestTimestamp = 0
+    lastRestPollTimestamp = 0
+    restRequestQueue = None
+    restPollerLoopIsRunning = False
+    rateLimitTokens = 16
+    rateLimitMaxTokens = 16
+    rateLimitUpdateTime = 0
+    enableLastHttpResponse = True
+    enableLastJsonResponse = True
+    enableLastResponseHeaders = True
+    last_http_response = None
+    last_json_response = None
+    last_response_headers = None
+
+    requiresEddsa = False
+    base58_encoder = None
+    base58_decoder = None
+    # no lower case l or upper case I, O
+    base58_alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+
+    commonCurrencies = {
+        'XBT': 'BTC',
+        'BCC': 'BCH',
+        'DRK': 'DASH',
+        'BCHABC': 'BCH',
+        'BCHSV': 'BSV',
+    }
 
     def __init__(self, config={}):
         self.id = "kabus"
@@ -270,6 +474,72 @@ class API(object):
             'BCHABC': 'BCH',
             'BCHSV': 'BSV',
         }
+
+        self.precision = dict() if self.precision is None else self.precision
+        self.limits = dict() if self.limits is None else self.limits
+        self.exceptions = dict() if self.exceptions is None else self.exceptions
+        self.headers = dict() if self.headers is None else self.headers
+        self.balance = dict() if self.balance is None else self.balance
+        self.orderbooks = dict() if self.orderbooks is None else self.orderbooks
+        self.tickers = dict() if self.tickers is None else self.tickers
+        self.trades = dict() if self.trades is None else self.trades
+        self.transactions = dict() if self.transactions is None else self.transactions
+        self.positions = dict() if self.positions is None else self.positions
+        self.ohlcvs = dict() if self.ohlcvs is None else self.ohlcvs
+        self.currencies = dict() if self.currencies is None else self.currencies
+        self.options = dict() if self.options is None else self.options  # Python does not allow to define properties in run-time with setattr
+        self.decimal_to_precision = decimal_to_precision
+        self.number_to_string = number_to_string
+
+        # version = '.'.join(map(str, sys.version_info[:3]))
+        # self.userAgent = {
+        #     'User-Agent': 'ccxt/' + __version__ + ' (+https://github.com/ccxt/ccxt) Python/' + version
+        # }
+
+        self.origin = self.uuid()
+        self.userAgent = default_user_agent()
+
+        settings = self.deep_extend(self.describe(), config)
+
+        for key in settings:
+            if hasattr(self, key) and isinstance(getattr(self, key), dict):
+                setattr(self, key, self.deep_extend(getattr(self, key), settings[key]))
+            else:
+                setattr(self, key, settings[key])
+
+        if self.api:
+            self.define_rest_api(self.api, 'request')
+
+        if self.markets:
+            self.set_markets(self.markets)
+
+        # convert all properties from underscore notation foo_bar to camelcase notation fooBar
+        cls = type(self)
+        for name in dir(self):
+            if name[0] != '_' and name[-1] != '_' and '_' in name:
+                parts = name.split('_')
+                # fetch_ohlcv → fetchOHLCV (not fetchOhlcv!)
+                exceptions = {'ohlcv': 'OHLCV', 'le': 'LE', 'be': 'BE'}
+                camelcase = parts[0] + ''.join(
+                    exceptions.get(i, self.capitalize(i)) for i in parts[1:])
+                attr = getattr(self, name)
+                if isinstance(attr, types.MethodType):
+                    setattr(cls, camelcase, getattr(cls, name))
+                else:
+                    setattr(self, camelcase, attr)
+
+        self.tokenBucket = self.extend({
+            'refillRate': 1.0 / self.rateLimit if self.rateLimit > 0 else float('inf'),
+            'delay': 0.001,
+            'capacity': 1.0,
+            'defaultCost': 1.0,
+        }, getattr(self, 'tokenBucket', {}))
+
+        self.session = self.session if self.session or self.asyncio_loop else Session()
+        self.logger = self.logger if self.logger else logging.getLogger(__name__)
+
+    def describe(self):
+        return {}
 
     def load_markets(self, reload=False, params={}):
         if not reload:

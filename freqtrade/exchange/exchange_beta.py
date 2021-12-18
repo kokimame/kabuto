@@ -19,7 +19,7 @@ from ccxt.base.decimal_to_precision import (ROUND_DOWN, ROUND_UP, TICK_SIZE, TRU
                                             decimal_to_precision)
 from pandas import DataFrame
 
-from freqtrade.sxt import API
+from freqtrade.sxt import API, AsyncAPI
 from freqtrade.constants import (DEFAULT_AMOUNT_RESERVE_PERCENT, NON_OPEN_EXCHANGE_STATES,
                                  ListPairsWithTimeframes)
 from freqtrade.data.converter import ohlcv_to_dataframe, trades_dict_to_list
@@ -82,7 +82,7 @@ class ExchangeBeta:
         :return: None
         """
         self._api = None
-        self._api_async: ccxt_async.Exchange = None
+        self._api_async: AsyncAPI = None
         self._markets: Dict = {}
 
         self._config.update(config)
@@ -126,13 +126,8 @@ class ExchangeBeta:
         self._trades_pagination = self._ft_has['trades_pagination']
         self._trades_pagination_arg = self._ft_has['trades_pagination_arg']
 
-        # Initialize ccxt objects
-        ccxt_config = self._ccxt_config.copy()
-        ccxt_config = deep_merge_dicts(exchange_config.get('ccxt_config', {}), ccxt_config)
-        ccxt_config = deep_merge_dicts(exchange_config.get('ccxt_sync_config', {}), ccxt_config)
-
         self._api = self._init_api(exchange_config)
-
+        self._api_async = self._init_async_api(exchange_config)
         # ccxt_async_config = self._ccxt_config.copy()
         # ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_config', {}),
         #                                      ccxt_async_config)
@@ -176,10 +171,12 @@ class ExchangeBeta:
 
     def _init_api(self, exchange_config: Dict[str, Any]):
         """
-        Do initialization of an API to access Tokyo Stock
-        Exchange here (e.g., kabu STATION API)
+        Initialize API to access Tokyo Stock Exchange (e.g., kabu STATION API)
         """
         return API(exchange_config)
+
+    def _init_async_api(self, exchange_config: Dict[str, Any]):
+        return AsyncAPI(exchange_config)
 
     def _init_ccxt(self, exchange_config: Dict[str, Any], ccxt_module: CcxtModuleType = ccxt,
                    ccxt_kwargs: Dict = {}) -> ccxt.Exchange:
