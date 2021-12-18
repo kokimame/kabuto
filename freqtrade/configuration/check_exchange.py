@@ -29,8 +29,7 @@ def check_exchange(config: Dict[str, Any], check_for_bad: bool = True) -> bool:
 
     exchange = config.get('exchange', {}).get('name').lower()
     if exchange == 'kabus':
-        logger.info(f'Exchange "kabus" (KabuStation) is under development. '
-                    f'We hack the economy from here!')
+        logger.warning(f'** Exchange "kabus" (KabuStation) is under development. **')
         return True
     if not exchange:
         raise OperationalException(
