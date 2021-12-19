@@ -343,8 +343,8 @@ class ExchangeBeta:
         """ Initialize markets both sync and async """
         try:
             self._markets = self._api.load_markets()
-            # self._load_async_markets()
-            # self._last_markets_refresh = arrow.utcnow().int_timestamp
+            self._load_async_markets()
+            self._last_markets_refresh = arrow.utcnow().int_timestamp
         except ccxt.BaseError:
             logger.exception('Unable to initialize markets.')
 
@@ -1301,6 +1301,7 @@ class ExchangeBeta:
         # handle caching
         for res in results:
             if isinstance(res, Exception):
+                logger.error(f'** {res}')
                 logger.warning("Async code raised an exception: %s", res.__class__.__name__)
                 continue
             # Deconstruct tuple (has 3 elements)

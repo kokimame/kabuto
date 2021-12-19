@@ -1,6 +1,6 @@
 """
 So far this is a nameless API to a stock market.
-
+Based on ccxt/base/exchange.py
 """
 # eddsa signing
 try:
@@ -555,6 +555,7 @@ class API(object):
 
     def set_markets(self, markets, currencies=None):
         """
+        Market example
         {'ETC/BTH':
             {'percentage': True,
              'feeSide': 'get',
@@ -687,6 +688,62 @@ class API(object):
                 return self.number(value)
             except Exception:
                 return default
+
+    def build_ohlcvc(self, trades, timeframe='1m', since=None, limit=None):
+        ms = self.parse_timeframe(timeframe) * 1000
+        ohlcvs = []
+        (timestamp, open, high, low, close, volume, count) = (0, 1, 2, 3, 4, 5, 6)
+        num_trades = len(trades)
+        oldest = (num_trades - 1) if limit is None else min(num_trades - 1, limit)
+        for i in range(0, oldest):
+            trade = trades[i]
+            if (since is not None) and (trade['timestamp'] < since):
+                continue
+            opening_time = int(math.floor(trade['timestamp'] / ms) * ms)  # Shift the edge of the m/h/d (but not M)
+            j = len(ohlcvs)
+            candle = j - 1
+            if (j == 0) or opening_time >= ohlcvs[candle][timestamp] + ms:
+                # moved to a new timeframe -> create a new candle from opening trade
+                ohlcvs.append([
+                    opening_time,
+                    trade['price'],
+                    trade['price'],
+                    trade['price'],
+                    trade['price'],
+                    trade['amount'],
+                    1,  # count
+                ])
+            else:
+                # still processing the same timeframe -> update opening trade
+                ohlcvs[candle][high] = max(ohlcvs[candle][high], trade['price'])
+                ohlcvs[candle][low] = min(ohlcvs[candle][low], trade['price'])
+                ohlcvs[candle][close] = trade['price']
+                ohlcvs[candle][volume] += trade['amount']
+                ohlcvs[candle][count] += 1
+        return ohlcvs
+
+    @staticmethod
+    def parse_timeframe(timeframe):
+        amount = int(timeframe[0:-1])
+        unit = timeframe[-1]
+        if 'y' == unit:
+            scale = 60 * 60 * 24 * 365
+        elif 'M' == unit:
+            scale = 60 * 60 * 24 * 30
+        elif 'w' == unit:
+            scale = 60 * 60 * 24 * 7
+        elif 'd' == unit:
+            scale = 60 * 60 * 24
+        elif 'h' == unit:
+            scale = 60 * 60
+        elif 'm' == unit:
+            scale = 60
+        elif 's' == unit:
+            scale = 1
+        else:
+            raise NotSupported('timeframe unit {} is not supported'.format(unit))
+        return amount * scale
+
 
     def cost_to_precision(self, symbol, cost):
         # return ccxt.decimal_to_precision(cost, TRUNCATE, self.markets[symbol]['precision']['price'], DECIMAL_PLACES)

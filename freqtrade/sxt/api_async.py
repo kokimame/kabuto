@@ -2,7 +2,10 @@
 
 import asyncio
 import concurrent.futures
+import random
 import socket
+import time
+
 import certifi
 import aiohttp
 import ssl
@@ -203,11 +206,19 @@ class AsyncAPI(API):
         return self.loaded_fees
 
     async def fetch_markets(self, params={}):
-        # markets are returned as a list
-        # currencies are returned as a dict
-        # this is for historical reasons
-        # and may be changed for consistency later
-        return self.to_array(self.markets)
+        result = [{
+            'symbol': '5020/JPY',
+            'base': 'JPY',
+            'quote': 'JPY',
+            'maker': 0.001,
+            'taker': 0.001
+        }]
+        return result
+        # # markets are returned as a list
+        # # currencies are returned as a dict
+        # # this is for historical reasons
+        # # and may be changed for consistency later
+        # return self.to_array(self.markets)
 
     async def fetch_currencies(self, params={}):
         # markets are returned as a list
@@ -257,7 +268,19 @@ class AsyncAPI(API):
         return await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
 
     async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
-        ohlcvs = await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
+        # ohlcvs = await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
+        async def dummy_ohlcv():
+            ohlcvs = []
+            start_t = time.time()
+            for i in range(10):
+                ohlcvs.append([
+                    start_t + i,
+                    random.randint(1000, 1200), random.randint(1200, 1400),
+                    random.randint(800, 1000), random.randint(1000, 1200),
+                    100, i + 1
+                ])
+            return ohlcvs
+        ohlcvs = await dummy_ohlcv()
         return [ohlcv[0:-1] for ohlcv in ohlcvs]
 
     async def fetchOHLCV(self, symbol, timeframe='1m', since=None, limit=None, params={}):
