@@ -6,10 +6,13 @@ import random
 import socket
 import time
 
+import arrow
 import certifi
 import aiohttp
 import ssl
 import sys
+
+import numpy as np
 import yarl
 
 # -----------------------------------------------------------------------------
@@ -39,6 +42,8 @@ class AsyncAPI(API):
         self.init_rest_rate_limiter()
         self.markets_loading = None
         self.reloading_markets = False
+        self.dummy_ohlcvs = []
+        self.starting_price = 500
 
     def init_rest_rate_limiter(self):
         self.throttle = Throttler(self.tokenBucket, self.asyncio_loop)
@@ -269,18 +274,36 @@ class AsyncAPI(API):
 
     async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
         # ohlcvs = await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
-        async def dummy_ohlcv():
-            ohlcvs = []
-            start_t = time.time()
-            for i in range(10):
-                ohlcvs.append([
-                    start_t + i,
-                    random.randint(1000, 1200), random.randint(1200, 1400),
-                    random.randint(800, 1000), random.randint(1000, 1200),
-                    100, i + 1
-                ])
-            return ohlcvs
-        ohlcvs = await dummy_ohlcv()
+        async def update_dummy_ohlcvs():
+            def get_hlcv(open):
+                h = open + np.random.randint(1, 10)
+                l = open - np.random.randint(1, 5)
+                c = (h + l) / 2
+                v = np.random.randint(10000, 15000)
+                return h, l, c, v
+
+            if len(self.dummy_ohlcvs) == 0:
+                o = self.starting_price
+                h, l, c, v = get_hlcv(o)
+                starting_time = arrow.utcnow().int_timestamp * 1000
+                self.dummy_ohlcvs.append([starting_time, o, h, l, c, v, 0])
+                for i in range(limit - 1):
+                    o = self.dummy_ohlcvs[-1][4]  # The last close is the next open
+                    h, l, c, v = get_hlcv(o)
+                    timestamp = starting_time - 60 * (i + 1)
+                    self.dummy_ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
+            else:
+                latest_time = self.dummy_ohlcvs[0][0]
+                current_time = arrow.utcnow().int_timestamp * 1000
+                if current_time - latest_time > 60:
+                    o = self.dummy_ohlcvs[-1][4]
+                    h, l, c, v = get_hlcv(o)
+                    self.dummy_ohlcvs.append([current_time, o, h, l, c, v, 0])
+                    del self.dummy_ohlcvs[0]
+
+            return self.dummy_ohlcvs
+
+        ohlcvs = await update_dummy_ohlcvs()
         return [ohlcv[0:-1] for ohlcv in ohlcvs]
 
     async def fetchOHLCV(self, symbol, timeframe='1m', since=None, limit=None, params={}):
