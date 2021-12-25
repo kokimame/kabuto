@@ -722,6 +722,13 @@ class API(object):
                 ohlcvs[candle][count] += 1
         return ohlcvs
 
+    def fetch_l2_order_book(self, symbol, limit=None, params={}):
+        orderbook = self.fetch_order_book(symbol, limit, params)
+        return self.extend(orderbook, {
+            'bids': self.sort_by(self.aggregate(orderbook['bids']), 0, True),
+            'asks': self.sort_by(self.aggregate(orderbook['asks']), 0),
+        })
+
     @staticmethod
     def parse_timeframe(timeframe):
         amount = int(timeframe[0:-1])
@@ -759,7 +766,8 @@ class API(object):
             'base': 'JPY',
             'quote': 'JPY',
             'maker': 0.001,
-            'taker': 0.001
+            'taker': 0.001,
+            'active': True,
         }]
 
         return result
