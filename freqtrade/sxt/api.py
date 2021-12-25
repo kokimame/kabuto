@@ -3,6 +3,8 @@ So far this is a nameless API to a stock market.
 Based on ccxt/base/exchange.py
 """
 # eddsa signing
+import numpy as np
+
 try:
     import axolotl_curve25519 as eddsa
 except ImportError:
@@ -341,7 +343,12 @@ class API(object):
         self.twofa = None
         self.markets_by_id = None
         self.currencies_by_id = None
-        self.precision = None
+        # NOTE: This probably means how many floating each values can take
+        self.precision = {
+            'amount': 0,
+            'price': 0,
+            'cost': 0
+        }
         self.exceptions = None
         self.limits = {
             'amount': {
@@ -729,6 +736,17 @@ class API(object):
             'asks': self.sort_by(self.aggregate(orderbook['asks']), 0),
         })
 
+    def fetch_l2_order_book_dummy(self, symbol, last_price, limit=None, params={}):
+        orderbook = {
+            'symbol': symbol,
+            'bids': [[last_price - i, 1000] for i in range(1, 5)],
+            'asks': [[last_price + i, 1000] for i in range(1, 5)],
+            'timestamp': None,
+            'datetime': None,
+            'nonce': np.random.randint(1000000, 2000000)
+        }
+        return orderbook
+
     @staticmethod
     def parse_timeframe(timeframe):
         amount = int(timeframe[0:-1])
@@ -768,6 +786,20 @@ class API(object):
             'maker': 0.001,
             'taker': 0.001,
             'active': True,
+            'limits': {  # value limits when placing orders on this market
+                'amount': {
+                    'min': 100,  # order amount should be > min
+                    'max': 10000,  # order amount should be < max
+                },
+                'price': {
+                    'min': 100,  # order price should be > min
+                    'max': 10000,  # order price should be < max
+                },
+                'cost':  {  # order cost = price * amount
+                    'min': 0,  # order cost should be > min
+                    'max': 1000000,  # order cost should be < max
+                },
+            },
         }]
 
         return result

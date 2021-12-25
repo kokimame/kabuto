@@ -1005,7 +1005,9 @@ class ExchangeBeta:
                                              self._ft_has['l2_limit_range_required'])
         try:
 
-            return self._api.fetch_l2_order_book(pair, limit1)
+            return self._api.fetch_l2_order_book_dummy(pair,
+                                                       self._api_async.dummy_ohlcvs[-1][1],
+                                                       limit1)
         except ccxt.NotSupported as e:
             raise OperationalException(
                 f'Exchange {self._api.name} does not support fetching order book.'
