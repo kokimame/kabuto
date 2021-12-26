@@ -128,13 +128,6 @@ class ExchangeBeta:
 
         self._api = self._init_api(exchange_config)
         self._api_async = self._init_async_api(exchange_config)
-        # ccxt_async_config = self._ccxt_config.copy()
-        # ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_config', {}),
-        #                                      ccxt_async_config)
-        # ccxt_async_config = deep_merge_dicts(exchange_config.get('ccxt_async_config', {}),
-        #                                      ccxt_async_config)
-        # self._api_async = self._init_ccxt(
-        #     exchange_config, ccxt_async, ccxt_kwargs=ccxt_async_config)
 
         logger.info('Using Exchange "%s"', self.name)
 
