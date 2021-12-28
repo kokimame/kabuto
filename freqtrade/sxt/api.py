@@ -789,15 +789,15 @@ class API(object):
             'limits': {  # value limits when placing orders on this market
                 'amount': {
                     'min': 100,  # order amount should be > min
-                    'max': 10000,  # order amount should be < max
+                    'max': 100000000,  # order amount should be < max
                 },
                 'price': {
                     'min': 100,  # order price should be > min
-                    'max': 10000,  # order price should be < max
+                    'max': 100000000,  # order price should be < max
                 },
                 'cost':  {  # order cost = price * amount
                     'min': 0,  # order cost should be > min
-                    'max': 1000000,  # order cost should be < max
+                    'max': 100000000,  # order cost should be < max
                 },
             },
         }]
