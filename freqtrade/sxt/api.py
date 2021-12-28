@@ -545,6 +545,8 @@ class API(object):
         self.session = self.session if self.session or self.asyncio_loop else Session()
         self.logger = self.logger if self.logger else logging.getLogger(__name__)
 
+        self.dummy_l2_order_book = None
+
     def describe(self):
         return {}
 
@@ -737,15 +739,19 @@ class API(object):
         })
 
     def fetch_l2_order_book_dummy(self, symbol, last_price, limit=None, params={}):
-        orderbook = {
-            'symbol': symbol,
-            'bids': [[last_price - i, 1000] for i in range(1, 5)],
-            'asks': [[last_price + i, 1000] for i in range(1, 5)],
-            'timestamp': None,
-            'datetime': None,
-            'nonce': np.random.randint(1000000, 2000000)
-        }
-        return orderbook
+        # Return l2 order book to align with the real fetching method
+        if not self.dummy_l2_order_book or \
+                (time.time() - self.dummy_l2_order_book['timestamp'] > 20):
+            self.dummy_l2_order_book = {
+                'symbol': symbol,
+                'bids': [[last_price - i, np.random.randint(10000, 20000)] for i in range(1, 5)],
+                'asks': [[last_price + i, np.random.randint(10000, 20000)] for i in range(1, 5)],
+                'timestamp': time.time(),
+                'datetime': None,
+                'nonce': np.random.randint(1000000, 2000000)
+            }
+
+        return self.dummy_l2_order_book
 
     @staticmethod
     def parse_timeframe(timeframe):
