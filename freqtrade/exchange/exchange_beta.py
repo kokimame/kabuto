@@ -19,7 +19,6 @@ from ccxt.base.decimal_to_precision import (ROUND_DOWN, ROUND_UP, TICK_SIZE, TRU
                                             decimal_to_precision)
 from pandas import DataFrame
 
-from freqtrade.sxt import API, AsyncAPI
 from freqtrade.constants import (DEFAULT_AMOUNT_RESERVE_PERCENT, NON_OPEN_EXCHANGE_STATES,
                                  ListPairsWithTimeframes)
 from freqtrade.data.converter import ohlcv_to_dataframe, trades_dict_to_list
@@ -31,13 +30,11 @@ from freqtrade.exchange.common import (API_FETCH_ORDER_RETRY_COUNT, BAD_EXCHANGE
                                        remove_credentials, retrier, retrier_async)
 from freqtrade.misc import chunks, deep_merge_dicts, safe_value_fallback2
 from freqtrade.plugins.pairlist.pairlist_helpers import expand_pairlist
-
+from freqtrade.sxt import API, AsyncAPI
 
 CcxtModuleType = Any
 
-
 logger = logging.getLogger(__name__)
-
 
 # Workaround for adding samesite support to pre 3.8 python
 # Only applies to python3.7, and only on certain exchanges (kraken)
@@ -46,7 +43,6 @@ http.cookies.Morsel._reserved["samesite"] = "SameSite"  # type: ignore
 
 
 class ExchangeBeta:
-
     _config: Dict = {}
 
     # Parameters to add directly to ccxt sync/async initialization.
@@ -126,6 +122,7 @@ class ExchangeBeta:
         self._trades_pagination = self._ft_has['trades_pagination']
         self._trades_pagination_arg = self._ft_has['trades_pagination_arg']
 
+        exchange_config.update({'kabuto': config['kabuto']})
         self._api = self._init_api(exchange_config)
         self._api_async = self._init_async_api(exchange_config)
 
@@ -999,7 +996,7 @@ class ExchangeBeta:
         try:
 
             return self._api.fetch_l2_order_book_dummy(pair,
-                                                       self._api_async.dummy_ohlcvs[pair][-1][1],
+                                                       self._api_async.dummy_data[pair][-1][1],
                                                        limit1)
         except ccxt.NotSupported as e:
             raise OperationalException(
@@ -1392,7 +1389,7 @@ class ExchangeBeta:
             else:
                 logger.debug(
                     "Fetching trades for pair %s, since %s %s...",
-                    pair,  since,
+                    pair, since,
                     '(' + arrow.get(since // 1000).isoformat() + ') ' if since is not None else ''
                 )
                 trades = await self._api_async.fetch_trades(pair, since=since, limit=1000)

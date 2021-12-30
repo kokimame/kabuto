@@ -4,6 +4,7 @@ Main Freqtrade worker class.
 import logging
 import time
 import traceback
+from multiprocessing.context import Process
 from os import getpid
 from typing import Any, Callable, Dict, Optional
 
@@ -14,7 +15,7 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-
+from freqtrade.sxt.dummy_server import run_dummy
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,20 @@ class Worker:
 
         self._sd_notify = sdnotify.SystemdNotifier() if \
             self._config.get('internals', {}).get('sd_notify', False) else None
+
+        if self._config['kabuto']['enabled']:
+            is_dummy_enabled = self._config['kabuto']['dummy']['enabled']
+            if not is_dummy_enabled:
+                # TODO Use real data from kabuto
+                # Sync with the PUSH broadcast from the KabuS
+                pass
+            else:
+                logger.debug('Start running dummy data server & client')
+                database_path = self._config['kabuto']['dummy'].get(
+                    'database_path', './dummy_price.json')
+                dummy_runner = Process(target=run_dummy, args=(
+                    database_path, self.freqtrade.pairlists.whitelist))
+                dummy_runner.start()
 
     def _notify(self, message: str) -> None:
         """
