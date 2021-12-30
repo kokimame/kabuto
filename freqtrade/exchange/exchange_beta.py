@@ -999,7 +999,7 @@ class ExchangeBeta:
         try:
 
             return self._api.fetch_l2_order_book_dummy(pair,
-                                                       self._api_async.dummy_ohlcvs[-1][1],
+                                                       self._api_async.dummy_ohlcvs[pair][-1][1],
                                                        limit1)
         except ccxt.NotSupported as e:
             raise OperationalException(

@@ -2,9 +2,12 @@
 
 import asyncio
 import concurrent.futures
+import json
 import random
+import shutil
 import socket
 import time
+from pathlib import Path
 
 import arrow
 import certifi
@@ -42,8 +45,12 @@ class AsyncAPI(API):
         self.init_rest_rate_limiter()
         self.markets_loading = None
         self.reloading_markets = False
-        self.dummy_ohlcvs = []
+        self.dummy_db_path = './dummy_price.json'
+        self.dummy_ohlcvs = {}
         self.starting_price = 500
+
+        # Remove the exisiting price DB (flat file) for the first retrieval
+        shutil.rmtree(self.dummy_db_path, ignore_errors=True)
 
     def init_rest_rate_limiter(self):
         self.throttle = Throttler(self.tokenBucket, self.asyncio_loop)
@@ -282,26 +289,41 @@ class AsyncAPI(API):
                 v = np.random.randint(10000, 15000)
                 return h, l, c, v
 
-            if len(self.dummy_ohlcvs) == 0:
+            if not Path(self.dummy_db_path).exists():
+                dummy_ohlcvs = []
+            else:
+                with open(self.dummy_db_path, 'r') as f:
+                    dummy_data = json.load(f)
+                    dummy_ohlcvs = dummy_data.get(symbol, [])
+
+            # In case of the initial retrieval for the symbol
+            if len(dummy_ohlcvs) == 0:
                 o = self.starting_price
                 h, l, c, v = get_hlcv(o)
                 starting_time = arrow.utcnow().int_timestamp * 1000
-                self.dummy_ohlcvs.append([starting_time, o, h, l, c, v, 0])
+                dummy_ohlcvs.append([starting_time, o, h, l, c, v, 0])
                 for i in range(limit - 1):
-                    o = self.dummy_ohlcvs[-1][4]  # The last close is the next open
+                    o = dummy_ohlcvs[-1][4]  # The last close is the next open
                     h, l, c, v = get_hlcv(o)
                     timestamp = starting_time - 60 * (i + 1)
-                    self.dummy_ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
+                    dummy_ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
             else:
-                latest_time = self.dummy_ohlcvs[0][0]
+                latest_time = dummy_ohlcvs[0][0]
                 current_time = arrow.utcnow().int_timestamp * 1000
                 if current_time - latest_time > 60:
-                    o = self.dummy_ohlcvs[-1][4]
+                    o = dummy_ohlcvs[-1][4]
                     h, l, c, v = get_hlcv(o)
-                    self.dummy_ohlcvs.append([current_time, o, h, l, c, v, 0])
-                    del self.dummy_ohlcvs[0]
+                    dummy_ohlcvs.append([current_time, o, h, l, c, v, 0])
+                    del dummy_ohlcvs[0]
 
-            return self.dummy_ohlcvs
+            # Update Database
+            # FIXME: This will be done in the module synced with PUSH server
+            with open(self.dummy_db_path, 'w') as f:
+                json.dump({symbol: dummy_ohlcvs}, f)
+
+            self.dummy_ohlcvs = {symbol: dummy_ohlcvs}
+
+            return dummy_ohlcvs
 
         ohlcvs = await update_dummy_ohlcvs()
         return [ohlcv[0:-1] for ohlcv in ohlcvs]
