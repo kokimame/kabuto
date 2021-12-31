@@ -2,8 +2,10 @@
 Main Freqtrade worker class.
 """
 import logging
+import os
 import time
 import traceback
+from glob import glob
 from multiprocessing.context import Process
 from os import getpid
 from typing import Any, Callable, Dict, Optional
@@ -15,7 +17,7 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.sxt.dummy_server import run_dummy
+from freqtrade.sxt.dummy_data import start_data_generation, dummy_data_generator
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +51,31 @@ class Worker:
             # Load configuration
             self._config = Configuration(self._args, None).get_config()
 
+        # Remove the existing dryrun database for debugging
+        if self._config['kabuto']['enabled']:
+            if self._config['kabuto']['clear_dryrun_history']:
+                for database_path in glob('./*.dryrun.sqlite'):
+                    os.remove(database_path)
+                    logger.debug(f'Removed {database_path} in initialization')
+
         # Init the instance of the bot
         self.freqtrade = FreqtradeBot(self._config)
+
+        is_dummy_enabled = self._config['kabuto']['dummy'].get('enabled', False)
+        if not is_dummy_enabled:
+            # TODO Use real data from kabuto
+            # Sync with the PUSH broadcast from the KabuS
+            pass
+        else:
+            logger.debug('Start running dummy data server & client')
+            database_path = self._config['kabuto']['dummy'].get(
+                'database_path', './dummy_price.json')
+
+            # It's possible to share the process between dummy server & main process.
+            # However, we use multiprocess since it is slightly inconvenient while debugging
+            # that the output of socket output is bound to the logger.
+            Process(target=dummy_data_generator, args=(
+                database_path, self.freqtrade.pairlists.whitelist)).start()
 
         internals_config = self._config.get('internals', {})
         self._throttle_secs = internals_config.get('process_throttle_secs',
@@ -59,20 +84,6 @@ class Worker:
 
         self._sd_notify = sdnotify.SystemdNotifier() if \
             self._config.get('internals', {}).get('sd_notify', False) else None
-
-        if self._config['kabuto']['enabled']:
-            is_dummy_enabled = self._config['kabuto']['dummy']['enabled']
-            if not is_dummy_enabled:
-                # TODO Use real data from kabuto
-                # Sync with the PUSH broadcast from the KabuS
-                pass
-            else:
-                logger.debug('Start running dummy data server & client')
-                database_path = self._config['kabuto']['dummy'].get(
-                    'database_path', './dummy_price.json')
-                dummy_runner = Process(target=run_dummy, args=(
-                    database_path, self.freqtrade.pairlists.whitelist))
-                dummy_runner.start()
 
     def _notify(self, message: str) -> None:
         """
