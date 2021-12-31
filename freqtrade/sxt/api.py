@@ -785,28 +785,52 @@ class API(object):
         return None
 
     def fetch_markets(self, params={}):
-        result = [{
-            'symbol': '5020/JPY',
-            'base': 'JPY',
-            'quote': 'JPY',
-            'maker': 0.001,
-            'taker': 0.001,
-            'active': True,
-            'limits': {  # value limits when placing orders on this market
-                'amount': {
-                    'min': 100,  # order amount should be > min
-                    'max': 100000000,  # order amount should be < max
-                },
-                'price': {
-                    'min': 100,  # order price should be > min
-                    'max': 100000000,  # order price should be < max
-                },
-                'cost':  {  # order cost = price * amount
-                    'min': 0,  # order cost should be > min
-                    'max': 100000000,  # order cost should be < max
+        result = [
+            {
+                'symbol': '8326/JPY',
+                'base': 'JPY',
+                'quote': 'JPY',
+                'maker': 0.001,
+                'taker': 0.001,
+                'active': True,
+                'limits': {  # value limits when placing orders on this market
+                    'amount': {
+                        'min': 100,  # order amount should be > min
+                        'max': 100000000,  # order amount should be < max
+                    },
+                    'price': {
+                        'min': 100,  # order price should be > min
+                        'max': 100000000,  # order price should be < max
+                    },
+                    'cost':  {  # order cost = price * amount
+                        'min': 0,  # order cost should be > min
+                        'max': 100000000,  # order cost should be < max
+                    },
                 },
             },
-        }]
+            {
+                'symbol': '5020/JPY',
+                'base': 'JPY',
+                'quote': 'JPY',
+                'maker': 0.001,
+                'taker': 0.001,
+                'active': True,
+                'limits': {  # value limits when placing orders on this market
+                    'amount': {
+                        'min': 100,  # order amount should be > min
+                        'max': 100000000,  # order amount should be < max
+                    },
+                    'price': {
+                        'min': 100,  # order price should be > min
+                        'max': 100000000,  # order price should be < max
+                    },
+                    'cost': {  # order cost = price * amount
+                        'min': 0,  # order cost should be > min
+                        'max': 100000000,  # order cost should be < max
+                    },
+                },
+            }
+        ]
 
         return result
 
