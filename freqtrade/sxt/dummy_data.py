@@ -64,7 +64,7 @@ async def push_listener(pairs, timeframe):
         dummy_data = json.load(f)
 
     async with websockets.connect(f'ws://localhost:{ws_port}') as ws:
-        cache_ohlcvs = {pair: [] for pair in pairs}
+        cached_ohlcvs = {pair: [] for pair in pairs}
         ohlcv_last_updated = time.time()
         timeframe_sec = timeframe_to_seconds(timeframe)
         while not ws.closed:
@@ -73,10 +73,10 @@ async def push_listener(pairs, timeframe):
             data = json.loads(res)
 
             for pair, ohlcv in data.items():
-                cache_ohlcvs[pair].append(ohlcv)
+                cached_ohlcvs[pair].append(ohlcv)
 
             if time.time() - ohlcv_last_updated > timeframe_sec:
-                for pair, ohlcvs in cache_ohlcvs.items():
+                for pair, ohlcvs in cached_ohlcvs.items():
                     # Open for this timeframe is the first open price in the cache
                     # Close for this timeframe is the last close price in the cache
                     o, c = ohlcvs[0][1], ohlcvs[-1][4]
@@ -86,6 +86,9 @@ async def push_listener(pairs, timeframe):
                     dummy_data[pair].append([t, o, h, l, c, v, 0])
                     del dummy_data[pair][0]
 
+                for pair in pairs:
+                    cached_ohlcvs[pair] = cached_ohlcvs[pairs[0]]
+
                 # Save data after receiving updates
                 with open(DATABASE_PATH, 'w') as f:
                     # NOTE Having indentation with extra memory may delay the process
@@ -94,7 +97,7 @@ async def push_listener(pairs, timeframe):
                     ohlcv_last_updated = time.time()
                     print(f'OHLCV updated @ {ohlcv_last_updated}: '
                           f'{[v[-1] for k, v in dummy_data.items()]}')
-                    cache_ohlcvs = {pair: [] for pair in pairs}
+                    cached_ohlcvs = {pair: [] for pair in pairs}
 
 
 def setup_fixed_amount_data(pairs, limit):
@@ -120,6 +123,8 @@ async def start_data_generation(database_path, pairs, timeframe):
         os.remove(DATABASE_PATH)
 
     dummy_data = setup_fixed_amount_data(pairs, limit)
+    for pair in pairs:
+        dummy_data[pair] = dummy_data[pairs[0]]
 
     with open(DATABASE_PATH, 'w') as f:
         json.dump(dummy_data, f, indent=1)
