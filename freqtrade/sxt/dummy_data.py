@@ -1,25 +1,29 @@
 import asyncio
 import json
 import os
+import time
 from pathlib import Path
 
 import arrow
 import numpy as np
 import websockets
 
-np.random.seed(0)
-mu = 0.001
-sigma = 0.91
+from freqtrade.exchange.exchange_beta import timeframe_to_seconds
+
+np.random.seed(1)
+mu = 0.5
+sigma = 5
 initial_price = 500
 limit = 1000
-ws_port = 8764
+ws_port = 8765
 DATABASE_PATH = ''
 
 
 def get_hlcv(open):
-    h = open + np.random.randint(1, 10)
-    l = open - np.random.randint(1, 5)
-    c = (h + l) / 2
+    c = open + np.random.normal(loc=mu, scale=sigma)
+    h = max(open, c) + np.random.randint(1, 5)
+    l = min(open, c) - np.random.randint(1, 5)
+
     v = np.random.randint(10000, 15000)
     return h, l, c, v
 
@@ -45,7 +49,8 @@ async def send_dummy_data(websocket):
         # Format data compatible with JSON (no single quote wrapping a string)
         # and send the string via the socket
         await websocket.send(str(json.dumps(pair_data)))
-        await asyncio.sleep(np.random.randint(5, 10))
+        # PUSH data comes to the client sporadically
+        await asyncio.sleep(np.random.randint(1, 5))
 
 
 async def dummy_server():
@@ -53,33 +58,46 @@ async def dummy_server():
         await asyncio.Future()
 
 
-async def data_client():
+async def push_listener(pairs, timeframe):
     # Load existing dummy data
     with open(DATABASE_PATH, 'r') as f:
         dummy_data = json.load(f)
 
     async with websockets.connect(f'ws://localhost:{ws_port}') as ws:
+        cache_ohlcvs = {pair: [] for pair in pairs}
+        ohlcv_last_updated = time.time()
+        timeframe_sec = timeframe_to_seconds(timeframe)
         while not ws.closed:
             res = await ws.recv()
             # print(res)
             data = json.loads(res)
 
             for pair, ohlcv in data.items():
-                dummy_data[pair].append(ohlcv)
-                del dummy_data[pair][0]
+                cache_ohlcvs[pair].append(ohlcv)
 
-            # Save data after receiving updates
-            with open(DATABASE_PATH, 'w') as f:
-                # Indentation may
-                json.dump(dummy_data, f, indent=1)
+            if time.time() - ohlcv_last_updated > timeframe_sec:
+                for pair, ohlcvs in cache_ohlcvs.items():
+                    # Open for this timeframe is the first open price in the cache
+                    # Close for this timeframe is the last close price in the cache
+                    o, c = ohlcvs[0][1], ohlcvs[-1][4]
+                    h, l = max(ohlcv[4] for ohlcv in ohlcvs), min(ohlcv[4] for ohlcv in ohlcvs)
+                    v = sum(ohlcv[5] for ohlcv in ohlcvs)
+                    t = ohlcvs[-1][0]  # Last timestamp
+                    dummy_data[pair].append([t, o, h, l, c, v, 0])
+                    del dummy_data[pair][0]
+
+                # Save data after receiving updates
+                with open(DATABASE_PATH, 'w') as f:
+                    # NOTE Having indentation with extra memory may delay the process
+                    json.dump(dummy_data, f, indent=1)
+
+                    ohlcv_last_updated = time.time()
+                    print(f'OHLCV updated @ {ohlcv_last_updated}: '
+                          f'{[v[-1] for k, v in dummy_data.items()]}')
+                    cache_ohlcvs = {pair: [] for pair in pairs}
 
 
-async def start_data_generation(database_path, pairs):
-    global DATABASE_PATH
-    DATABASE_PATH = database_path  # Will be accessed in async function
-    if Path(DATABASE_PATH).exists():
-        os.remove(DATABASE_PATH)
-
+def setup_fixed_amount_data(pairs, limit):
     dummy_data = {}
     for pair in pairs:
         o = initial_price
@@ -92,22 +110,41 @@ async def start_data_generation(database_path, pairs):
             timestamp = starting_time - 60 * (i + 1)
             ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
         dummy_data[pair] = ohlcvs
+    return dummy_data
+
+
+async def start_data_generation(database_path, pairs, timeframe):
+    global DATABASE_PATH
+    DATABASE_PATH = database_path  # Will be accessed in async function
+    if Path(DATABASE_PATH).exists():
+        os.remove(DATABASE_PATH)
+
+    dummy_data = setup_fixed_amount_data(pairs, limit)
 
     with open(DATABASE_PATH, 'w') as f:
         json.dump(dummy_data, f, indent=1)
 
     server = asyncio.create_task(dummy_server())
-    client = asyncio.create_task(data_client())
+    client = asyncio.create_task(push_listener(pairs, timeframe))
     tasks = await asyncio.gather(server, client)
     return tasks
 
 
-def dummy_data_generator(database_path, whitelist):
+def dummy_data_generator(database_path, whitelist, timeframe):
     # Entrypoint to the data generation
     asyncio.run(
-        start_data_generation(database_path, whitelist))
+        start_data_generation(database_path, whitelist, timeframe))
 
 
 if __name__ == '__main__':
     asyncio.run(start_data_generation(
-        './test_dummy_server.json', ['5020/JPY']))
+        './test_dummy_server.json', ['5020/JPY'], '1m'))
+    # import matplotlib.pyplot as plt
+    # dummy_data = setup_fixed_amount_data(['5020/JPY'], 2000)
+    # for key, ohlcvs in dummy_data.items():
+    #     closes = [ohlcv[4] for ohlcv in ohlcvs]
+    #     d1, d2 = closes[:1000], closes[1000:]
+    #     d2 = [2 * d2[0] - d for d in d2]
+    #     plt.plot(d1 + d2)
+    #     plt.show()
+    #     break

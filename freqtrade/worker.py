@@ -75,7 +75,10 @@ class Worker:
             # However, we use multiprocess since it is slightly inconvenient while debugging
             # that the output of socket output is bound to the logger.
             Process(target=dummy_data_generator, args=(
-                database_path, self.freqtrade.pairlists.whitelist)).start()
+                database_path,
+                self.freqtrade.pairlists.whitelist,
+                self._config['timeframe']
+            )).start()
 
         internals_config = self._config.get('internals', {})
         self._throttle_secs = internals_config.get('process_throttle_secs',
