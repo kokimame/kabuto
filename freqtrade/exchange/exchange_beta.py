@@ -499,6 +499,10 @@ class ExchangeBeta:
                                                 precision=self.markets[pair]['precision']['amount'],
                                                 counting_mode=self.precisionMode,
                                                 ))
+        # Round up/down to the closest 100
+        if self.markets[pair]['min_unit'] is not None:
+            min_unit = self.markets[pair]['min_unit']
+            amount = round(amount / min_unit, 0) * min_unit
 
         return amount
 

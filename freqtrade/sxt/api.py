@@ -793,6 +793,7 @@ class API(object):
                 'maker': 0.001,
                 'taker': 0.001,
                 'active': True,
+                'min_unit': 100,
                 'limits': {  # value limits when placing orders on this market
                     'amount': {
                         'min': 100,  # order amount should be > min
@@ -815,6 +816,7 @@ class API(object):
                 'maker': 0.001,
                 'taker': 0.001,
                 'active': True,
+                'min_unit': 100,
                 'limits': {  # value limits when placing orders on this market
                     'amount': {
                         'min': 100,  # order amount should be > min
