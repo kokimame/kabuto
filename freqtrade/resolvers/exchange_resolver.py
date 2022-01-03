@@ -4,6 +4,7 @@ This module loads custom exchanges
 import logging
 
 import freqtrade.exchange as exchanges
+import freqtrade.kabuto as exchanges_beta
 from freqtrade.exchange import MAP_EXCHANGE_CHILDCLASS, Exchange
 from freqtrade.resolvers import IResolver
 
@@ -49,7 +50,7 @@ class ExchangeResolver(IResolver):
         """
 
         try:
-            ex_class = getattr(exchanges, exchange_name)
+            ex_class = getattr(exchanges, exchange_name) or getattr(exchanges_beta, exchange_name)
 
             exchange = ex_class(**kwargs)
             if exchange:

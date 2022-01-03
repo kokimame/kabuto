@@ -30,7 +30,7 @@ from freqtrade.exchange.common import (API_FETCH_ORDER_RETRY_COUNT, BAD_EXCHANGE
                                        remove_credentials, retrier, retrier_async)
 from freqtrade.misc import chunks, deep_merge_dicts, safe_value_fallback2
 from freqtrade.plugins.pairlist.pairlist_helpers import expand_pairlist
-from freqtrade.sxt import API, AsyncAPI
+from freqtrade.kabuto import API, AsyncAPI
 
 CcxtModuleType = Any
 

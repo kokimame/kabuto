@@ -17,7 +17,7 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.sxt.dummy_data import start_data_generation, dummy_data_generator
+from freqtrade.kabuto.dummy_data import start_data_generation, dummy_data_generator
 
 logger = logging.getLogger(__name__)
 

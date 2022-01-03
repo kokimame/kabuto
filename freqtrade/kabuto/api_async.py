@@ -21,7 +21,7 @@ __all__ = [
 
 from ccxt.async_support.base.throttler import Throttler
 
-from freqtrade.sxt import API
+from freqtrade.kabuto import API
 
 
 class AsyncAPI(API):
