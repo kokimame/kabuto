@@ -8,7 +8,7 @@ import arrow
 import numpy as np
 import websockets
 
-from freqtrade.exchange.exchange_beta import timeframe_to_seconds
+from freqtrade.kabuto.exchange_beta import timeframe_to_seconds
 
 np.random.seed(1)
 mu = 0.5

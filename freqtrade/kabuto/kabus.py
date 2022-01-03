@@ -2,7 +2,7 @@
 import logging
 from typing import Dict
 
-from freqtrade.exchange.exchange_beta import ExchangeBeta
+from freqtrade.kabuto.exchange_beta import ExchangeBeta
 
 logger = logging.getLogger(__name__)
 
