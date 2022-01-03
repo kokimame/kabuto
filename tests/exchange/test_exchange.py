@@ -238,9 +238,9 @@ def test_validate_order_time_in_force(default_conf, mocker, caplog):
     (2.9999, 4, 0.005, 2.995),
 ])
 def test_amount_to_precision(default_conf, mocker, amount, precision_mode, precision, expected):
-    '''
+    """
     Test rounds down
-    '''
+    """
 
     markets = PropertyMock(return_value={'ETH/BTC': {'precision': {'amount': precision}}})
 
@@ -279,9 +279,7 @@ def test_amount_to_precision(default_conf, mocker, amount, precision_mode, preci
 
 ])
 def test_price_to_precision(default_conf, mocker, price, precision_mode, precision, expected):
-    '''
-    Test price to precision
-    '''
+    """Test price to precision"""
     markets = PropertyMock(return_value={'ETH/BTC': {'precision': {'price': precision}}})
 
     exchange = get_patched_exchange(mocker, default_conf, id="binance")
@@ -941,9 +939,22 @@ def test_validate_required_startup_candles(default_conf, mocker, caplog):
     default_conf['startup_candle_count'] = 20
     ex = Exchange(default_conf)
     assert ex
-    default_conf['startup_candle_count'] = 600
+    # assumption is that the exchange provides 500 candles per call.s
+    assert ex.validate_required_startup_candles(200, '5m') == 1
+    assert ex.validate_required_startup_candles(499, '5m') == 1
+    assert ex.validate_required_startup_candles(600, '5m') == 2
+    assert ex.validate_required_startup_candles(501, '5m') == 2
+    assert ex.validate_required_startup_candles(499, '5m') == 1
+    assert ex.validate_required_startup_candles(1000, '5m') == 3
+    assert ex.validate_required_startup_candles(2499, '5m') == 5
+    assert log_has_re(r'Using 5 calls to get OHLCV. This.*', caplog)
 
-    with pytest.raises(OperationalException, match=r'This strategy requires 600.*'):
+    with pytest.raises(OperationalException, match=r'This strategy requires 2500.*'):
+        ex.validate_required_startup_candles(2500, '5m')
+
+    # Ensure the same also happens on init
+    default_conf['startup_candle_count'] = 6000
+    with pytest.raises(OperationalException, match=r'This strategy requires 6000.*'):
         Exchange(default_conf)
 
 
@@ -1014,6 +1025,12 @@ def test_create_dry_run_order_limit_fill(default_conf, mocker, side, startprice,
     order_closed = exchange.fetch_dry_run_order(order['id'])
     assert order_closed['status'] == 'closed'
     assert order['fee']
+
+    # Empty orderbook test
+    mocker.patch('freqtrade.exchange.Exchange.fetch_l2_order_book',
+                 return_value={'asks': [], 'bids': []})
+    exchange._dry_run_open_orders[order['id']]['status'] = 'open'
+    order_closed = exchange.fetch_dry_run_order(order['id'])
 
 
 @pytest.mark.parametrize("side,rate,amount,endprice", [
@@ -1506,6 +1523,7 @@ def test_get_historic_ohlcv(default_conf, mocker, caplog, exchange_name):
     assert exchange._async_get_candle_history.call_count == 2
     # Returns twice the above OHLCV data
     assert len(ret) == 2
+    assert log_has_re(r'Downloaded data for .* with length .*\.', caplog)
 
     caplog.clear()
 
@@ -1587,12 +1605,13 @@ async def test__async_get_historic_ohlcv(default_conf, mocker, caplog, exchange_
     exchange._api_async.fetch_ohlcv = get_mock_coro(ohlcv)
 
     pair = 'ETH/USDT'
-    res = await exchange._async_get_historic_ohlcv(pair, "5m",
-                                                   1500000000000, is_new_pair=False)
+    respair, restf, res = await exchange._async_get_historic_ohlcv(
+        pair, "5m", 1500000000000, is_new_pair=False)
+    assert respair == pair
+    assert restf == '5m'
     # Call with very old timestamp - causes tons of requests
     assert exchange._api_async.fetch_ohlcv.call_count > 200
     assert res[0] == ohlcv[0]
-    assert log_has_re(r'Downloaded data for .* with length .*\.', caplog)
 
 
 def test_refresh_latest_ohlcv(mocker, default_conf, caplog) -> None:
@@ -1630,12 +1649,14 @@ def test_refresh_latest_ohlcv(mocker, default_conf, caplog) -> None:
     assert exchange._api_async.fetch_ohlcv.call_count == 2
     exchange._api_async.fetch_ohlcv.reset_mock()
 
+    exchange.required_candle_call_count = 2
     res = exchange.refresh_latest_ohlcv(pairs)
     assert len(res) == len(pairs)
 
     assert log_has(f'Refreshing candle (OHLCV) data for {len(pairs)} pairs', caplog)
     assert exchange._klines
-    assert exchange._api_async.fetch_ohlcv.call_count == 2
+    assert exchange._api_async.fetch_ohlcv.call_count == 4
+    exchange._api_async.fetch_ohlcv.reset_mock()
     for pair in pairs:
         assert isinstance(exchange.klines(pair), DataFrame)
         assert len(exchange.klines(pair)) > 0
@@ -1651,13 +1672,22 @@ def test_refresh_latest_ohlcv(mocker, default_conf, caplog) -> None:
     res = exchange.refresh_latest_ohlcv([('IOTA/ETH', '5m'), ('XRP/ETH', '5m')])
     assert len(res) == len(pairs)
 
-    assert exchange._api_async.fetch_ohlcv.call_count == 2
+    assert exchange._api_async.fetch_ohlcv.call_count == 0
+    exchange.required_candle_call_count = 1
     assert log_has(f"Using cached candle (OHLCV) data for pair {pairs[0][0]}, "
                    f"timeframe {pairs[0][1]} ...",
                    caplog)
     res = exchange.refresh_latest_ohlcv([('IOTA/ETH', '5m'), ('XRP/ETH', '5m'), ('XRP/ETH', '1d')],
                                         cache=False)
     assert len(res) == 3
+    assert exchange._api_async.fetch_ohlcv.call_count == 3
+
+    # Test the same again, should NOT return from cache!
+    exchange._api_async.fetch_ohlcv.reset_mock()
+    res = exchange.refresh_latest_ohlcv([('IOTA/ETH', '5m'), ('XRP/ETH', '5m'), ('XRP/ETH', '1d')],
+                                        cache=False)
+    assert len(res) == 3
+    assert exchange._api_async.fetch_ohlcv.call_count == 3
 
 
 @pytest.mark.asyncio
@@ -1753,7 +1783,7 @@ def test_refresh_latest_ohlcv_inv_result(default_conf, mocker, caplog):
     assert len(res) == 1
     # Test that each is in list at least once as order is not guaranteed
     assert log_has("Error loading ETH/BTC. Result was [[]].", caplog)
-    assert log_has("Async code raised an exception: TypeError", caplog)
+    assert log_has("Async code raised an exception: TypeError()", caplog)
 
 
 def test_get_next_limit_in_list():
@@ -2000,15 +2030,6 @@ def test_get_sell_rate_exception(default_conf, mocker, caplog):
 
     exchange._config['ask_strategy']['price_side'] = 'ask'
     assert exchange.get_rate(pair, refresh=True, side="sell") == 0.13
-
-
-def make_fetch_ohlcv_mock(data):
-    def fetch_ohlcv_mock(pair, timeframe, since):
-        if since:
-            assert since > data[-1][0]
-            return []
-        return data
-    return fetch_ohlcv_mock
 
 
 @pytest.mark.parametrize("exchange_name", EXCHANGES)
@@ -2927,39 +2948,49 @@ def test_extract_cost_curr_rate(mocker, default_conf, order, expected) -> None:
     assert ex.extract_cost_curr_rate(order) == expected
 
 
-@pytest.mark.parametrize("order,expected", [
+@pytest.mark.parametrize("order,unknown_fee_rate,expected", [
     # Using base-currency
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.05,
-        'fee': {'currency': 'ETH', 'cost': 0.004, 'rate': None}}, 0.1),
+        'fee': {'currency': 'ETH', 'cost': 0.004, 'rate': None}}, None, 0.1),
     ({'symbol': 'ETH/BTC', 'amount': 0.05, 'cost': 0.05,
-        'fee': {'currency': 'ETH', 'cost': 0.004, 'rate': None}}, 0.08),
+        'fee': {'currency': 'ETH', 'cost': 0.004, 'rate': None}}, None, 0.08),
     # Using quote currency
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.05,
-        'fee': {'currency': 'BTC', 'cost': 0.005}}, 0.1),
+        'fee': {'currency': 'BTC', 'cost': 0.005}}, None, 0.1),
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.05,
-        'fee': {'currency': 'BTC', 'cost': 0.002, 'rate': None}}, 0.04),
+        'fee': {'currency': 'BTC', 'cost': 0.002, 'rate': None}}, None, 0.04),
     # Using foreign currency
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.05,
-        'fee': {'currency': 'NEO', 'cost': 0.0012}}, 0.001944),
+        'fee': {'currency': 'NEO', 'cost': 0.0012}}, None, 0.001944),
     ({'symbol': 'ETH/BTC', 'amount': 2.21, 'cost': 0.02992561,
-        'fee': {'currency': 'NEO', 'cost': 0.00027452}}, 0.00074305),
+        'fee': {'currency': 'NEO', 'cost': 0.00027452}}, None, 0.00074305),
     # Rate included in return - return as is
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.05,
-        'fee': {'currency': 'USDT', 'cost': 0.34, 'rate': 0.01}}, 0.01),
+        'fee': {'currency': 'USDT', 'cost': 0.34, 'rate': 0.01}}, None, 0.01),
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.05,
-        'fee': {'currency': 'USDT', 'cost': 0.34, 'rate': 0.005}}, 0.005),
+        'fee': {'currency': 'USDT', 'cost': 0.34, 'rate': 0.005}}, None, 0.005),
     # 0.1% filled - no costs (kraken - #3431)
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.0,
-      'fee': {'currency': 'BTC', 'cost': 0.0, 'rate': None}}, None),
+      'fee': {'currency': 'BTC', 'cost': 0.0, 'rate': None}}, None, None),
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.0,
-      'fee': {'currency': 'ETH', 'cost': 0.0, 'rate': None}}, 0.0),
+      'fee': {'currency': 'ETH', 'cost': 0.0, 'rate': None}}, None, 0.0),
     ({'symbol': 'ETH/BTC', 'amount': 0.04, 'cost': 0.0,
-      'fee': {'currency': 'NEO', 'cost': 0.0, 'rate': None}}, None),
+      'fee': {'currency': 'NEO', 'cost': 0.0, 'rate': None}}, None, None),
+    # Invalid pair combination - POINT/BTC is not a pair
+    ({'symbol': 'POINT/BTC', 'amount': 0.04, 'cost': 0.5,
+      'fee': {'currency': 'POINT', 'cost': 2.0, 'rate': None}}, None, None),
+    ({'symbol': 'POINT/BTC', 'amount': 0.04, 'cost': 0.5,
+      'fee': {'currency': 'POINT', 'cost': 2.0, 'rate': None}}, 1, 4.0),
+    ({'symbol': 'POINT/BTC', 'amount': 0.04, 'cost': 0.5,
+      'fee': {'currency': 'POINT', 'cost': 2.0, 'rate': None}}, 2, 8.0),
 ])
-def test_calculate_fee_rate(mocker, default_conf, order, expected) -> None:
+def test_calculate_fee_rate(mocker, default_conf, order, expected, unknown_fee_rate) -> None:
     mocker.patch('freqtrade.exchange.Exchange.fetch_ticker', return_value={'last': 0.081})
+    if unknown_fee_rate:
+        default_conf['exchange']['unknown_fee_rate'] = unknown_fee_rate
 
     ex = get_patched_exchange(mocker, default_conf)
+
     assert ex.calculate_fee_rate(order) == expected
 
 

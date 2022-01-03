@@ -16,7 +16,6 @@ hyperopt = [
 develop = [
     'coveralls',
     'flake8',
-    'flake8-type-annotations',
     'flake8-tidy-imports',
     'mypy',
     'pytest',
@@ -44,14 +43,13 @@ setup(
         ],
     install_requires=[
         # from requirements.txt
-        'ccxt>=1.50.48',
+        'ccxt>=1.60.11',
         'SQLAlchemy',
         'python-telegram-bot>=13.4',
         'arrow>=0.17.0',
         'cachetools',
         'requests',
         'urllib3',
-        'wrapt',
         'jsonschema',
         'TA-Lib',
         'pandas-ta',

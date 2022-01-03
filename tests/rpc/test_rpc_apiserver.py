@@ -520,7 +520,7 @@ def test_api_locks(botclient):
     assert rc.json()['lock_count'] == 0
 
 
-def test_api_show_config(botclient, mocker):
+def test_api_show_config(botclient):
     ftbot, client = botclient
     patch_get_signal(ftbot)
 
@@ -533,9 +533,14 @@ def test_api_show_config(botclient, mocker):
     assert rc.json()['timeframe_min'] == 5
     assert rc.json()['state'] == 'running'
     assert rc.json()['bot_name'] == 'freqtrade'
+    assert rc.json()['strategy_version'] is None
     assert not rc.json()['trailing_stop']
     assert 'bid_strategy' in rc.json()
     assert 'ask_strategy' in rc.json()
+    assert 'unfilledtimeout' in rc.json()
+    assert 'version' in rc.json()
+    assert 'api_version' in rc.json()
+    assert 1.1 <= rc.json()['api_version'] <= 1.2
 
 
 def test_api_daily(botclient, mocker, ticker, fee, markets):
@@ -570,7 +575,6 @@ def test_api_trades(botclient, mocker, fee, markets):
     assert rc.json()['total_trades'] == 0
 
     create_mock_trades(fee)
-    Trade.query.session.flush()
 
     rc = client_get(client, f"{BASE_URI}/trades")
     assert_response(rc)
@@ -597,7 +601,6 @@ def test_api_trade_single(botclient, mocker, fee, ticker, markets):
     assert rc.json()['detail'] == 'Trade not found.'
 
     create_mock_trades(fee)
-    Trade.query.session.flush()
 
     rc = client_get(client, f"{BASE_URI}/trade/3")
     assert_response(rc)
@@ -694,7 +697,6 @@ def test_api_edge_disabled(botclient, mocker, ticker, fee, markets):
     assert rc.json() == {"error": "Error querying /api/v1/edge: Edge is not enabled."}
 
 
-@pytest.mark.usefixtures("init_persistence")
 def test_api_profit(botclient, mocker, ticker, fee, markets):
     ftbot, client = botclient
     patch_get_signal(ftbot)
@@ -718,6 +720,7 @@ def test_api_profit(botclient, mocker, ticker, fee, markets):
     assert rc.json() == {'avg_duration': ANY,
                          'best_pair': 'XRP/BTC',
                          'best_rate': 1.0,
+                         'best_pair_profit_ratio': 0.01,
                          'first_trade_date': ANY,
                          'first_trade_timestamp': ANY,
                          'latest_trade_date': '5 minutes ago',
@@ -745,7 +748,6 @@ def test_api_profit(botclient, mocker, ticker, fee, markets):
                          }
 
 
-@pytest.mark.usefixtures("init_persistence")
 def test_api_stats(botclient, mocker, ticker, fee, markets,):
     ftbot, client = botclient
     patch_get_signal(ftbot)
@@ -811,13 +813,15 @@ def test_api_performance(botclient, fee):
     trade.close_profit_abs = trade.calc_profit()
 
     Trade.query.session.add(trade)
-    Trade.query.session.flush()
+    Trade.commit()
 
     rc = client_get(client, f"{BASE_URI}/performance")
     assert_response(rc)
     assert len(rc.json()) == 2
-    assert rc.json() == [{'count': 1, 'pair': 'LTC/ETH', 'profit': 7.61, 'profit_abs': 0.01872279},
-                         {'count': 1, 'pair': 'XRP/ETH', 'profit': -5.57, 'profit_abs': -0.1150375}]
+    assert rc.json() == [{'count': 1, 'pair': 'LTC/ETH', 'profit': 7.61, 'profit_pct': 7.61,
+                          'profit_ratio': 0.07609203, 'profit_abs': 0.01872279},
+                         {'count': 1, 'pair': 'XRP/ETH', 'profit': -5.57, 'profit_pct': -5.57,
+                          'profit_ratio': -0.05570419, 'profit_abs': -0.1150375}]
 
 
 def test_api_status(botclient, mocker, ticker, fee, markets):
@@ -947,6 +951,38 @@ def test_api_blacklist(botclient, mocker):
     assert rc.json() == {"blacklist": ["DOGE/BTC", "HOT/BTC", "ETH/BTC", "XRP/.*"],
                          "blacklist_expanded": ["ETH/BTC", "XRP/BTC", "XRP/USDT"],
                          "length": 4,
+                         "method": ["StaticPairList"],
+                         "errors": {},
+                         }
+
+    rc = client_delete(client, f"{BASE_URI}/blacklist?pairs_to_delete=DOGE/BTC")
+    assert_response(rc)
+    assert rc.json() == {"blacklist": ["HOT/BTC", "ETH/BTC", "XRP/.*"],
+                         "blacklist_expanded": ["ETH/BTC", "XRP/BTC", "XRP/USDT"],
+                         "length": 3,
+                         "method": ["StaticPairList"],
+                         "errors": {},
+                         }
+
+    rc = client_delete(client, f"{BASE_URI}/blacklist?pairs_to_delete=NOTHING/BTC")
+    assert_response(rc)
+    assert rc.json() == {"blacklist": ["HOT/BTC", "ETH/BTC", "XRP/.*"],
+                         "blacklist_expanded": ["ETH/BTC", "XRP/BTC", "XRP/USDT"],
+                         "length": 3,
+                         "method": ["StaticPairList"],
+                         "errors": {
+                             "NOTHING/BTC": {
+                                 "error_msg": "Pair NOTHING/BTC is not in the current blacklist."
+                             }
+                             },
+                         }
+    rc = client_delete(
+        client,
+        f"{BASE_URI}/blacklist?pairs_to_delete=HOT/BTC&pairs_to_delete=ETH/BTC")
+    assert_response(rc)
+    assert rc.json() == {"blacklist": ["XRP/.*"],
+                         "blacklist_expanded": ["XRP/BTC", "XRP/USDT"],
+                         "length": 1,
                          "method": ["StaticPairList"],
                          "errors": {},
                          }
@@ -1128,7 +1164,7 @@ def test_api_pair_candles(botclient, ohlcv_history):
     assert isinstance(rc.json()['columns'], list)
     assert rc.json()['columns'] == ['date', 'open', 'high',
                                     'low', 'close', 'volume', 'sma', 'buy', 'sell',
-                                    '__date_ts', '_buy_signal_open', '_sell_signal_open']
+                                    '__date_ts', '_buy_signal_close', '_sell_signal_close']
     assert 'pair' in rc.json()
     assert rc.json()['pair'] == 'XRP/BTC'
 
@@ -1139,7 +1175,8 @@ def test_api_pair_candles(botclient, ohlcv_history):
             [['2017-11-26 08:50:00', 8.794e-05, 8.948e-05, 8.794e-05, 8.88e-05, 0.0877869,
               None, 0, 0, 1511686200000, None, None],
              ['2017-11-26 08:55:00', 8.88e-05, 8.942e-05, 8.88e-05,
-                 8.893e-05, 0.05874751, 8.886500000000001e-05, 1, 0, 1511686500000, 8.88e-05, None],
+                 8.893e-05, 0.05874751, 8.886500000000001e-05, 1, 0, 1511686500000, 8.893e-05,
+                 None],
              ['2017-11-26 09:00:00', 8.891e-05, 8.893e-05, 8.875e-05, 8.877e-05,
                  0.7039405, 8.885e-05, 0, 0, 1511686800000, None, None]
 

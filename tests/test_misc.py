@@ -67,6 +67,9 @@ def test_file_load_json(mocker, testdatadir) -> None:
 
 @pytest.mark.parametrize("pair,expected_result", [
     ("ETH/BTC", 'ETH_BTC'),
+    ("ETH/USDT", 'ETH_USDT'),
+    ("ETH/USDT:USDT", 'ETH_USDT_USDT'),  # swap with USDT as settlement currency
+    ("ETH/USDT:USDT-210625", 'ETH_USDT_USDT_210625'),  # expiring futures
     ("Fabric Token/ETH", 'Fabric_Token_ETH'),
     ("ETHH20", 'ETHH20'),
     (".XBTBON2H", '_XBTBON2H'),
@@ -181,16 +184,18 @@ def test_render_template_fallback(mocker):
     assert 'if self.dp' in val
 
 
-def test_parse_db_uri_for_logging() -> None:
-    postgresql_conn_uri = "postgresql+psycopg2://scott123:scott123@host/dbname"
-    mariadb_conn_uri = "mariadb+mariadbconnector://app_user:Password123!@127.0.0.1:3306/company"
-    mysql_conn_uri = "mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4"
-    sqlite_conn_uri = "sqlite:////freqtrade/user_data/tradesv3.sqlite"
-    censored_pwd = "*****"
+@pytest.mark.parametrize('conn_url,expected', [
+    ("postgresql+psycopg2://scott123:scott123@host:1245/dbname",
+     "postgresql+psycopg2://scott123:*****@host:1245/dbname"),
+    ("postgresql+psycopg2://scott123:scott123@host.name.com/dbname",
+     "postgresql+psycopg2://scott123:*****@host.name.com/dbname"),
+    ("mariadb+mariadbconnector://app_user:Password123!@127.0.0.1:3306/company",
+     "mariadb+mariadbconnector://app_user:*****@127.0.0.1:3306/company"),
+    ("mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4",
+     "mysql+pymysql://user:*****@some_mariadb/dbname?charset=utf8mb4"),
+    ("sqlite:////freqtrade/user_data/tradesv3.sqlite",
+     "sqlite:////freqtrade/user_data/tradesv3.sqlite"),
+])
+def test_parse_db_uri_for_logging(conn_url, expected) -> None:
 
-    def get_pwd(x): return x.split(':')[2].split('@')[0]
-
-    assert get_pwd(parse_db_uri_for_logging(postgresql_conn_uri)) == censored_pwd
-    assert get_pwd(parse_db_uri_for_logging(mariadb_conn_uri)) == censored_pwd
-    assert get_pwd(parse_db_uri_for_logging(mysql_conn_uri)) == censored_pwd
-    assert sqlite_conn_uri == parse_db_uri_for_logging(sqlite_conn_uri)
+    assert parse_db_uri_for_logging(conn_url) == expected

@@ -36,6 +36,10 @@ The easiest way to install and run Freqtrade is to clone the bot Github reposito
 
 These requirements apply to both [Script Installation](#script-installation) and [Manual Installation](#manual-installation).
 
+!!! Note "ARM64 systems"
+    If you are running an ARM64 system (like a MacOS M1 or an Oracle VM), please use [docker](docker_quickstart.md) to run freqtrade.
+    While native installation is possible with some manual effort, this is not supported at the moment.
+
 ### Install guide
 
 * [Python >= 3.7.x](http://docs.python-guide.org/en/latest/starting/installation/)
@@ -52,6 +56,10 @@ OS Specific steps are listed first, the [Common](#common) section below is neces
 !!! Note
     Python3.7 or higher and the corresponding pip are assumed to be available.
 
+!!! Warning "Python 3.10 support"
+    Due to issues with dependencies, freqtrade is currently unable to support python 3.10.
+    We're working on supporting python 3.10, are however dependant on support from dependencies.
+
 === "Debian/Ubuntu"
     #### Install necessary dependencies
 
@@ -60,7 +68,7 @@ OS Specific steps are listed first, the [Common](#common) section below is neces
     sudo apt-get update
 
     # install packages
-    sudo apt install -y python3-pip python3-venv python3-dev python3-pandas git
+    sudo apt install -y python3-pip python3-venv python3-dev python3-pandas git curl
     ```
 
 === "RaspberryPi/Raspbian"
@@ -71,7 +79,7 @@ OS Specific steps are listed first, the [Common](#common) section below is neces
 
 
     ```bash
-    sudo apt-get install python3-venv libatlas-base-dev cmake
+    sudo apt-get install python3-venv libatlas-base-dev cmake curl
     # Use pywheels.org to speed up installation
     sudo echo "[global]\nextra-index-url=https://www.piwheels.org/simple" > tee /etc/pip.conf
 
