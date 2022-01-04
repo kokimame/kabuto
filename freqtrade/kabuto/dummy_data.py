@@ -11,7 +11,7 @@ import websockets
 from freqtrade.kabuto.exchange_beta import timeframe_to_seconds
 
 np.random.seed(1)
-mu = 0.5
+mu = 0.1
 sigma = 5
 initial_price = 500
 limit = 1000
