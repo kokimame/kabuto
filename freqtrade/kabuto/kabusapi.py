@@ -22,34 +22,47 @@ async def push_listener(pairs, timeframe, database_path):
                                   ping_timeout=None) as ws:
         market_data = {pair: [] for pair in pairs}
         cached_data = {pair: [] for pair in pairs}
+        last_volume = {pair: None for pair in pairs}
         price_last_saved = time.time()
-        last_volume = None
         timeframe_sec = timeframe_to_seconds(timeframe)
         while not ws.closed:
             res = await ws.recv()
             data = json.loads(res)
-            if last_volume is None:
-                # Drop the first data to compute the relative increase of volume
-                last_volume = data['TradingVolume']
-                continue
+            print(f'{timeframe_sec - (time.time() - price_last_saved):.2f}')
             symbol, exchange = data['Symbol'], data['Exchange']
             pair = f'{symbol}@{exchange}/JPY'
+
+            # Drop the first data to compute the relative increase of volume
+            if last_volume[pair] is None:
+                last_volume[pair] = data['TradingVolume']
+                continue
+
             cache_by_pair = cached_data[pair]
             int_timestamp = arrow.utcnow().int_timestamp * 1000
             cache_by_pair.append([data['CurrentPrice'],
-                                  data['TradingVolume'] - last_volume,
+                                  data['TradingVolume'] - last_volume[pair],
                                   int_timestamp])
-            last_volume = data['TradingVolume']
+            last_volume[pair] = data['TradingVolume']
+
+            if time.time() - price_last_saved > 2 * timeframe_sec:
+                print('Data ignored as the update took too much time (probably due to break)')
+                cached_data = {pair: [] for pair in pairs}
 
             if time.time() - price_last_saved > timeframe_sec:
                 for pair, cache in cached_data.items():
-                    o, c = cache[0][0], cache[-1][0]
-                    h, l = max(d[0] for d in cache), min(d[0] for d in cache)
-                    v = sum(d[1] for d in cache)
-                    t = cache[-1][2]  # Last timestamp
-                    market_data[pair].append([t, o, h, l, c, v, 0])
-                    if len(market_data[pair]) > limit:
-                        del market_data[pair][0]
+                    if len(cache) > 0:  # Only if data cached in the timeframe
+                        o, c = cache[0][0], cache[-1][0]
+                        h, l = max(d[0] for d in cache), min(d[0] for d in cache)
+                        v = sum(d[1] for d in cache)
+                        t = cache[-1][2]  # Last timestamp
+                        market_data[pair].append([t, o, h, l, c, v, 0])
+                        if len(market_data[pair]) > limit:
+                            del market_data[pair][0]
+                        print(f'\nUpdate @ {datetime.now()} {pair}: {market_data[pair][-1]}')
+                    else:  # Save the last OHLCV if no data updated in the timeframe
+                        if len(market_data[pair]) > 0:
+                            last_ohlcv = market_data[pair][-1]
+                            market_data[pair].append(last_ohlcv)
 
                 # Save data after receiving updates
                 with open(database_path, 'w') as f:
@@ -57,9 +70,7 @@ async def push_listener(pairs, timeframe, database_path):
                     json.dump(market_data, f, indent=1)
 
                     price_last_saved = time.time()
-                    print(f'\nOHLCV updated @ {datetime.now()}: '
-                          f'{[v[-1] for k, v in market_data.items()]}')
-                    cached_data = {pair: [] for pair in pairs}
+                cached_data = {pair: [] for pair in pairs}
 
 
 async def create_client_task(database_path, pairs, timeframe):
@@ -128,7 +139,9 @@ def get_access_token():
 
 
 if __name__ == '__main__':
-    whitelist = ['167030018@24/JPY']
+    whitelist = [
+        '8306@1/JPY', '4689@1/JPY', '6501@1/JPY', '3826@1/JPY', '5020@1/JPY', '3632@1/JPY'
+    ]
     token = get_access_token()
     print(f'Token -> {token}')
     registry = register_whitelist(token, whitelist)
