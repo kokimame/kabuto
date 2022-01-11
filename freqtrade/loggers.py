@@ -36,6 +36,10 @@ def _set_loggers(verbosity: int = 0, api_verbosity: str = 'info') -> None:
         logging.ERROR if api_verbosity == 'error' else logging.INFO
     )
 
+    logging.getLogger('websockets.client').setLevel(
+        logging.ERROR
+    )
+
 
 def get_existing_handlers(handlertype):
     """
