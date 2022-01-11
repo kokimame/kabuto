@@ -39,12 +39,14 @@ class AsyncAPI(API):
         self.init_rest_rate_limiter()
         self.markets_loading = None
         self.reloading_markets = False
-        self.dummy_db_path = config['kabuto']['dummy']['database_path']
+        self.price_database = config['kabuto']['database_path']
+        self.price_data = {}
+        self.dummy_database = config['kabuto']['dummy']['database_path']
         self.dummy_data = {}
         self.starting_price = 500
 
         # Remove the exisiting price DB (flat file) for the first retrieval
-        shutil.rmtree(self.dummy_db_path, ignore_errors=True)
+        shutil.rmtree(self.dummy_database, ignore_errors=True)
 
     def init_rest_rate_limiter(self):
         self.throttle = Throttler(self.tokenBucket, self.asyncio_loop)
@@ -273,10 +275,9 @@ class AsyncAPI(API):
     async def fetchOHLCVC(self, symbol, timeframe='1m', since=None, limit=None, params={}):
         return await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
 
-    async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
-        # ohlcvs = await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
+    async def fetch_dummy_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
         async def update_dummy_ohlcvs():
-            with open(self.dummy_db_path, 'r') as f:
+            with open(self.dummy_database, 'r') as f:
                 dummy_data = json.load(f)
 
             self.dummy_data = dummy_data
@@ -284,6 +285,19 @@ class AsyncAPI(API):
             return ohlcvs
 
         ohlcvs = await update_dummy_ohlcvs()
+        return [ohlcv[0:-1] for ohlcv in ohlcvs]
+
+    async def fetch_ohlcv(self, symbol, timeframe='1m', since=None, limit=None, params={}):
+        # ohlcvs = await self.fetch_ohlcvc(symbol, timeframe, since, limit, params)
+        async def update_ohlcvs():
+            with open(self.price_database, 'r') as f:
+                dummy_data = json.load(f)
+
+            self.dummy_data = dummy_data
+            ohlcvs = dummy_data[symbol]
+            return ohlcvs
+
+        ohlcvs = await update_ohlcvs()
         return [ohlcv[0:-1] for ohlcv in ohlcvs]
 
     async def fetchOHLCV(self, symbol, timeframe='1m', since=None, limit=None, params={}):
