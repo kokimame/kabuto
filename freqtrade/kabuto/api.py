@@ -787,7 +787,7 @@ class API(object):
     def fetch_markets(self, params={}):
         result = [
             {
-                'symbol': '8326/JPY',
+                'symbol': '167030018@24/JPY',
                 'base': 'JPY',
                 'quote': 'JPY',
                 'maker': 0.001,
@@ -810,7 +810,7 @@ class API(object):
                 },
             },
             {
-                'symbol': '5020/JPY',
+                'symbol': '5020@1/JPY',
                 'base': 'JPY',
                 'quote': 'JPY',
                 'maker': 0.001,

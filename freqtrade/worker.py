@@ -17,8 +17,8 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.kabuto import kabusapi
 from freqtrade.kabuto.dummy_data import start_data_generation, dummy_data_generator
+from freqtrade.kabuto.kabusapi import register_whitelist, run_push_listener, get_access_token
 
 logger = logging.getLogger(__name__)
 
@@ -63,18 +63,23 @@ class Worker:
         # Remove the existing dryrun database for debugging
         if self._config['kabuto']['enabled']:
             if self._config['kabuto']['token'] is None:
-                self._config['kabuto']['token'] = kabusapi.get_access_token()
-                logger.debug(f'Got KabusAPI Token: {self._config["kabuto"]["token"]}')
+                self._config['kabuto']['token'] = get_access_token()
+                logger.debug(f'KabusAPI: Got Token: {self._config["kabuto"]["token"]}')
 
             is_dummy_enabled = self._config['kabuto']['dummy'].get('enabled', False)
             if not is_dummy_enabled:
-                # TODO Use real data from kabuto
-                # Sync with the PUSH broadcast from the KabuS
-                pass
+                registry = register_whitelist(self._config['kabuto']['token'],
+                                              self.freqtrade.pairlists.whitelist)
+                database_path = self._config['kabuto']['database_path']
+                logger.debug(f'KabusAPI: Registered List -> {registry}')
+                Process(target=run_push_listener, args=(
+                    database_path,
+                    self.freqtrade.pairlists.whitelist,
+                    self._config['timeframe']
+                )).start()
             else:
                 logger.debug('Start running dummy data server & client')
-                database_path = self._config['kabuto']['dummy'].get(
-                    'database_path', './dummy_price.json')
+                database_path = self._config['kabuto']['dummy']['database_path']
 
                 # It's possible to share the process between dummy server & main process.
                 # However, we use multiprocess since it is slightly inconvenient while debugging

@@ -28,7 +28,7 @@ async def push_listener(pairs, timeframe, database_path):
         while not ws.closed:
             res = await ws.recv()
             data = json.loads(res)
-            print(f'{timeframe_sec - (time.time() - price_last_saved):.2f}')
+            # print(f'{timeframe_sec - (time.time() - price_last_saved):.2f}')
             symbol, exchange = data['Symbol'], data['Exchange']
             pair = f'{symbol}@{exchange}/JPY'
 
@@ -140,7 +140,8 @@ def get_access_token():
 
 if __name__ == '__main__':
     whitelist = [
-        '8306@1/JPY', '4689@1/JPY', '6501@1/JPY', '3826@1/JPY', '5020@1/JPY', '3632@1/JPY'
+        '8306@1/JPY', '4689@1/JPY', '6501@1/JPY', '3826@1/JPY', '5020@1/JPY', '3632@1/JPY',
+        '5191@1/JPY', '6440@1/JPY',
     ]
     token = get_access_token()
     print(f'Token -> {token}')
