@@ -57,38 +57,38 @@ class Worker:
                 os.remove(database_path)
                 logger.debug(f'Removed {database_path} in initialization')
 
-        # Init the instance of the bot
-        self.freqtrade = FreqtradeBot(self._config)
-
         # Remove the existing dryrun database for debugging
         if self._config['kabuto']['enabled']:
             if self._config['kabuto']['token'] is None:
                 self._config['kabuto']['token'] = get_access_token()
                 logger.debug(f'KabusAPI: Got Token: {self._config["kabuto"]["token"]}')
 
-            is_dummy_enabled = self._config['kabuto']['dummy'].get('enabled', False)
-            if not is_dummy_enabled:
-                registry = register_whitelist(self._config['kabuto']['token'],
-                                              self.freqtrade.pairlists.whitelist)
-                database_path = self._config['kabuto']['database_path']
-                logger.debug(f'KabusAPI: Registered List -> {registry}')
-                Process(target=run_push_listener, args=(
-                    database_path,
-                    self.freqtrade.pairlists.whitelist,
-                    self._config['timeframe']
-                )).start()
-            else:
-                logger.debug('Start running dummy data server & client')
-                database_path = self._config['kabuto']['dummy']['database_path']
+        # Init the instance of the bot
+        self.freqtrade = FreqtradeBot(self._config)
 
-                # It's possible to share the process between dummy server & main process.
-                # However, we use multiprocess since it is slightly inconvenient while debugging
-                # that the output of socket output is bound to the logger.
-                Process(target=dummy_data_generator, args=(
-                    database_path,
-                    self.freqtrade.pairlists.whitelist,
-                    self._config['timeframe']
-                )).start()
+        is_dummy_enabled = self._config['kabuto']['dummy'].get('enabled', False)
+        if not is_dummy_enabled:
+            registry = register_whitelist(self._config['kabuto']['token'],
+                                          self.freqtrade.pairlists.whitelist)
+            database_path = self._config['kabuto']['database_path']
+            logger.debug(f'KabusAPI: Registered List -> {registry}')
+            Process(target=run_push_listener, args=(
+                database_path,
+                self.freqtrade.pairlists.whitelist,
+                self._config['timeframe']
+            )).start()
+        else:
+            logger.debug('Start running dummy data server & client')
+            database_path = self._config['kabuto']['dummy']['database_path']
+
+            # It's possible to share the process between dummy server & main process.
+            # However, we use multiprocess since it is slightly inconvenient while debugging
+            # that the output of socket output is bound to the logger.
+            Process(target=dummy_data_generator, args=(
+                database_path,
+                self.freqtrade.pairlists.whitelist,
+                self._config['timeframe']
+            )).start()
 
         internals_config = self._config.get('internals', {})
         self._throttle_secs = internals_config.get('process_throttle_secs',

@@ -5,6 +5,8 @@ Based on ccxt/base/exchange.py
 # eddsa signing
 import numpy as np
 
+from freqtrade.kabuto.kabusapi import fetch_order_book
+
 try:
     import axolotl_curve25519 as eddsa
 except ImportError:
@@ -546,6 +548,7 @@ class API(object):
         self.logger = self.logger if self.logger else logging.getLogger(__name__)
 
         self.dummy_l2_order_book = None
+        self.kabuto_config = config['kabuto']
 
     def describe(self):
         return {}
@@ -787,7 +790,7 @@ class API(object):
     def fetch_markets(self, params={}):
         result = [
             {
-                'symbol': '167030018@24/JPY',
+                'symbol': pair,
                 'base': 'JPY',
                 'quote': 'JPY',
                 'maker': 0.001,
@@ -808,30 +811,9 @@ class API(object):
                         'max': 100000000,  # order cost should be < max
                     },
                 },
-            },
-            {
-                'symbol': '5020@1/JPY',
-                'base': 'JPY',
-                'quote': 'JPY',
-                'maker': 0.001,
-                'taker': 0.001,
-                'active': True,
-                'min_unit': 100,
-                'limits': {  # value limits when placing orders on this market
-                    'amount': {
-                        'min': 100,  # order amount should be > min
-                        'max': 100000000,  # order amount should be < max
-                    },
-                    'price': {
-                        'min': 100,  # order price should be > min
-                        'max': 100000000,  # order price should be < max
-                    },
-                    'cost': {  # order cost = price * amount
-                        'min': 0,  # order cost should be > min
-                        'max': 100000000,  # order cost should be < max
-                    },
-                },
-            }
+            } for pair in ['8306@1/JPY', '4689@1/JPY', '6501@1/JPY',
+                           '3826@1/JPY', '5020@1/JPY', '3632@1/JPY',
+                           '5191@1/JPY', '6440@1/JPY', '167030018@24/JPY']
         ]
 
         return result
@@ -842,7 +824,7 @@ class API(object):
 
     def fetch_order_book(self, symbol, limit=None, params={}):
         self.load_markets()
-        orderbook = {}
+        orderbook = fetch_order_book(self.kabuto_config['token'], symbol, limit=None, params={})
         return orderbook
 
     def fetch_currencies(self, params={}):

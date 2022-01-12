@@ -3,16 +3,26 @@ import json
 import time
 import urllib.request
 from datetime import datetime
-from pathlib import Path
 
 import arrow
+import ccxt
 import websockets
 
 from freqtrade.credentials_DONT_UPLOAD import *
-from freqtrade.kabuto.exchange_beta import timeframe_to_seconds
 
 limit = 1000
 DATABASE_PATH = ''
+
+
+def timeframe_to_seconds(timeframe: str) -> int:
+    """
+    While this is the same with the one in exchange_beta, avoid circular import.
+    There should be a better work-around.
+    Translates the timeframe interval value written in the human readable
+    form ('1m', '5m', '1h', '1d', '1w', etc.) to the number
+    of seconds for one timeframe interval.
+    """
+    return ccxt.Exchange.parse_timeframe(timeframe)
 
 
 async def push_listener(pairs, timeframe, database_path):
@@ -138,7 +148,35 @@ def get_access_token():
         raise e
 
 
+def fetch_order_book(access_token, pair, limit=None, params={}):
+    symbol, exchange = parse_kabus_ticker(pair)
+    url = f'http://{KABUSAPI_LIVE_HOST}/kabusapi/board/{symbol}@{exchange}'
+    req = urllib.request.Request(url, method='GET')
+    req.add_header('Content-Type', 'application/json')
+    req.add_header('X-API-KEY', access_token)
+
+    orderbook = {'symbol': pair, 'bids': [], 'asks': [], 'timestamp': None, 'datatime': None,
+                 'nonce': 0}
+    try:
+        with urllib.request.urlopen(req) as res:
+            content = json.loads(res.read())
+            buys = {key: val for key, val in content.items() if key.startswith('Buy')}
+            sells = {key: val for key, val in content.items() if key.startswith('Sell')}
+            buy_keys = sorted([key for key in buys.keys()],
+                              key=lambda k: int(k.replace('Buy', '')))
+            sell_keys = sorted([key for key in sells.keys()],
+                               key=lambda k: int(k.replace('Sell', '')))
+            orderbook['bids'] = [[buys[key]['Price'], buys[key]['Qty']] for key in buy_keys]
+            orderbook['asks'] = [[sells[key]['Price'], sells[key]['Qty']] for key in sell_keys]
+            orderbook['timestamp'] = time.time()
+            return orderbook
+    except Exception as e:
+        raise e
+
+
 if __name__ == '__main__':
+    # orderbook = fetch_order_book(KABUSAPI_ONETIME_TOKEN, '167030018@24/JPY')
+    # print(orderbook)
     whitelist = [
         '8306@1/JPY', '4689@1/JPY', '6501@1/JPY', '3826@1/JPY', '5020@1/JPY', '3632@1/JPY',
         '5191@1/JPY', '6440@1/JPY',

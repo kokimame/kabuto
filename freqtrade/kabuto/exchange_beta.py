@@ -998,10 +998,12 @@ class ExchangeBeta:
         limit1 = self.get_next_limit_in_list(limit, self._ft_has['l2_limit_range'],
                                              self._ft_has['l2_limit_range_required'])
         try:
-
-            return self._api.fetch_l2_order_book_dummy(pair,
-                                                       self._api_async.dummy_data[pair][-1][1],
-                                                       limit1)
+            if not self._config['kabuto']['dummy']['enabled']:
+                return self._api.fetch_l2_order_book(pair, limit1)
+            else:
+                return self._api.fetch_l2_order_book_dummy(pair,
+                                                           self._api_async.dummy_data[pair][-1][1],
+                                                           limit1)
         except ccxt.NotSupported as e:
             raise OperationalException(
                 f'Exchange {self._api.name} does not support fetching order book.'
