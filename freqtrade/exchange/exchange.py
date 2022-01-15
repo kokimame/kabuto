@@ -1227,9 +1227,11 @@ class Exchange:
         :param since_ms: Timestamp in milliseconds to get history from
         :return: List with candle (OHLCV) data
         """
-        return asyncio.get_event_loop().run_until_complete(
+        pair, timeframe, data = asyncio.get_event_loop().run_until_complete(
             self._async_get_historic_ohlcv(pair=pair, timeframe=timeframe,
                                            since_ms=since_ms, is_new_pair=is_new_pair))
+        logger.info(f"Downloaded data for {pair} with length {len(data)}.")
+        return data
 
     def get_historic_ohlcv_as_df(self, pair: str, timeframe: str,
                                  since_ms: int) -> DataFrame:
