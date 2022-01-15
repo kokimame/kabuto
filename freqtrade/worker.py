@@ -17,7 +17,7 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.kabuto.dummy_data import start_data_generation, dummy_data_generator
+from freqtrade.kabuto.dummy_data import dummy_data_generator
 from freqtrade.kabuto.kabusapi import register_whitelist, run_push_listener, get_access_token
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,20 @@ class Worker:
             # Load configuration
             self._config = Configuration(self._args, None).get_config()
 
+        self.setup_kabuto()
+
+        # Init the instance of the bot
+        self.freqtrade = FreqtradeBot(self._config)
+
+        internals_config = self._config.get('internals', {})
+        self._throttle_secs = internals_config.get('process_throttle_secs',
+                                                   constants.PROCESS_THROTTLE_SECS)
+        self._heartbeat_interval = internals_config.get('heartbeat_interval', 60)
+
+        self._sd_notify = sdnotify.SystemdNotifier() if \
+            self._config.get('internals', {}).get('sd_notify', False) else None
+
+    def setup_kabuto(self):
         # When config for Kabuto is used
         if 'kabuto' in self._config and self._config['kabuto']['enabled']:
             if self._config['kabuto']['clear_dryrun_history']:
@@ -92,17 +106,6 @@ class Worker:
                     self._config['exchange']['pair_whitelist'],
                     self._config['timeframe']
                 )).start()
-
-        # Init the instance of the bot
-        self.freqtrade = FreqtradeBot(self._config)
-
-        internals_config = self._config.get('internals', {})
-        self._throttle_secs = internals_config.get('process_throttle_secs',
-                                                   constants.PROCESS_THROTTLE_SECS)
-        self._heartbeat_interval = internals_config.get('heartbeat_interval', 60)
-
-        self._sd_notify = sdnotify.SystemdNotifier() if \
-            self._config.get('internals', {}).get('sd_notify', False) else None
 
     def _notify(self, message: str) -> None:
         """
