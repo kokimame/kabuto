@@ -19,13 +19,14 @@ from freqtrade.edge import PairInfo
 from freqtrade.enums import RunMode
 from freqtrade.exchange import Exchange
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.persistence import LocalTrade, Trade, init_db
+from freqtrade.persistence import LocalTrade, Order, Trade, init_db
 from freqtrade.resolvers import ExchangeResolver
 from freqtrade.worker import Worker
 from tests.conftest_trades import (mock_trade_1, mock_trade_2, mock_trade_3, mock_trade_4,
                                    mock_trade_5, mock_trade_6)
 from tests.conftest_trades_usdt import (mock_trade_usdt_1, mock_trade_usdt_2, mock_trade_usdt_3,
-                                        mock_trade_usdt_4, mock_trade_usdt_5, mock_trade_usdt_6)
+                                        mock_trade_usdt_4, mock_trade_usdt_5, mock_trade_usdt_6,
+                                        mock_trade_usdt_7)
 
 
 logging.getLogger('').setLevel(logging.INFO)
@@ -106,6 +107,8 @@ def patch_exchange(mocker, api_mock=None, id='binance', mock_markets=True) -> No
         mocker.patch('freqtrade.exchange.Exchange._init_ccxt', MagicMock(return_value=api_mock))
     else:
         mocker.patch('freqtrade.exchange.Exchange._init_ccxt', MagicMock())
+        mocker.patch('freqtrade.exchange.Exchange.timeframes', PropertyMock(
+                return_value=['5m', '15m', '1h', '1d']))
 
 
 def get_patched_exchange(mocker, config, api_mock=None, id='binance',
@@ -200,6 +203,9 @@ def create_mock_trades(fee, use_db: bool = True):
     """
     Create some fake trades ...
     """
+    if use_db:
+        Trade.query.session.rollback()
+
     def add_trade(trade):
         if use_db:
             Trade.query.session.add(trade)
@@ -258,6 +264,8 @@ def create_mock_trades_usdt(fee, use_db: bool = True):
     trade = mock_trade_usdt_6(fee)
     add_trade(trade)
 
+    trade = mock_trade_usdt_7(fee)
+    add_trade(trade)
     if use_db:
         Trade.commit()
 
@@ -1011,8 +1019,8 @@ def limit_buy_order_open():
         'type': 'limit',
         'side': 'buy',
         'symbol': 'mocked',
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'datetime': arrow.utcnow().isoformat(),
-        'timestamp': arrow.utcnow().int_timestamp,
         'price': 0.00001099,
         'amount': 90.99181073,
         'filled': 0.0,
@@ -1038,6 +1046,7 @@ def market_buy_order():
         'type': 'market',
         'side': 'buy',
         'symbol': 'mocked',
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'datetime': arrow.utcnow().isoformat(),
         'price': 0.00004099,
         'amount': 91.99181073,
@@ -1054,6 +1063,7 @@ def market_sell_order():
         'type': 'market',
         'side': 'sell',
         'symbol': 'mocked',
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'datetime': arrow.utcnow().isoformat(),
         'price': 0.00004173,
         'amount': 91.99181073,
@@ -1070,7 +1080,8 @@ def limit_buy_order_old():
         'type': 'limit',
         'side': 'buy',
         'symbol': 'mocked',
-        'datetime': str(arrow.utcnow().shift(minutes=-601).datetime),
+        'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
+        'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
         'price': 0.00001099,
         'amount': 90.99181073,
         'filled': 0.0,
@@ -1086,6 +1097,7 @@ def limit_sell_order_old():
         'type': 'limit',
         'side': 'sell',
         'symbol': 'ETH/BTC',
+        'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
         'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
         'price': 0.00001099,
         'amount': 90.99181073,
@@ -1102,6 +1114,7 @@ def limit_buy_order_old_partial():
         'type': 'limit',
         'side': 'buy',
         'symbol': 'ETH/BTC',
+        'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
         'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
         'price': 0.00001099,
         'amount': 90.99181073,
@@ -1131,7 +1144,7 @@ def limit_buy_order_canceled_empty(request):
             'info': {},
             'id': '1234512345',
             'clientOrderId': None,
-            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp,
+            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
             'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
             'lastTradeTimestamp': None,
             'symbol': 'LTC/USDT',
@@ -1152,7 +1165,7 @@ def limit_buy_order_canceled_empty(request):
             'info': {},
             'id': 'AZNPFF-4AC4N-7MKTAT',
             'clientOrderId': None,
-            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp,
+            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
             'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
             'lastTradeTimestamp': None,
             'status': 'canceled',
@@ -1173,7 +1186,7 @@ def limit_buy_order_canceled_empty(request):
             'info': {},
             'id': '1234512345',
             'clientOrderId': 'alb1234123',
-            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp,
+            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
             'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
             'lastTradeTimestamp': None,
             'symbol': 'LTC/USDT',
@@ -1194,7 +1207,7 @@ def limit_buy_order_canceled_empty(request):
             'info': {},
             'id': '1234512345',
             'clientOrderId': 'alb1234123',
-            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp,
+            'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
             'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
             'lastTradeTimestamp': None,
             'symbol': 'LTC/USDT',
@@ -1218,9 +1231,9 @@ def limit_sell_order_open():
         'id': 'mocked_limit_sell',
         'type': 'limit',
         'side': 'sell',
-        'pair': 'mocked',
+        'symbol': 'mocked',
         'datetime': arrow.utcnow().isoformat(),
-        'timestamp': arrow.utcnow().int_timestamp,
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'price': 0.00001173,
         'amount': 90.99181073,
         'filled': 0.0,
@@ -1386,7 +1399,7 @@ def tickers():
         'BLK/BTC': {
             'symbol': 'BLK/BTC',
             'timestamp': 1522014806072,
-            'datetime': '2018-03-25T21:53:26.720Z',
+            'datetime': '2018-03-25T21:53:26.072Z',
             'high': 0.007745,
             'low': 0.007512,
             'bid': 0.007729,
@@ -1882,7 +1895,8 @@ def buy_order_fee():
         'type': 'limit',
         'side': 'buy',
         'symbol': 'mocked',
-        'datetime': str(arrow.utcnow().shift(minutes=-601).datetime),
+        'timestamp': arrow.utcnow().shift(minutes=-601).int_timestamp * 1000,
+        'datetime': arrow.utcnow().shift(minutes=-601).isoformat(),
         'price': 0.245441,
         'amount': 8.0,
         'cost': 1.963528,
@@ -1982,7 +1996,7 @@ def import_fails() -> None:
 
 @pytest.fixture(scope="function")
 def open_trade():
-    return Trade(
+    trade = Trade(
         pair='ETH/BTC',
         open_rate=0.00001099,
         exchange='binance',
@@ -1994,6 +2008,26 @@ def open_trade():
         open_date=arrow.utcnow().shift(minutes=-601).datetime,
         is_open=True
     )
+    trade.orders = [
+        Order(
+            ft_order_side='buy',
+            ft_pair=trade.pair,
+            ft_is_open=False,
+            order_id='123456789',
+            status="closed",
+            symbol=trade.pair,
+            order_type="market",
+            side="buy",
+            price=trade.open_rate,
+            average=trade.open_rate,
+            filled=trade.amount,
+            remaining=0,
+            cost=trade.open_rate * trade.amount,
+            order_date=trade.open_date,
+            order_filled_date=trade.open_date,
+        )
+    ]
+    return trade
 
 
 @pytest.fixture(scope="function")
@@ -2160,7 +2194,7 @@ def limit_buy_order_usdt_open():
         'side': 'buy',
         'symbol': 'mocked',
         'datetime': arrow.utcnow().isoformat(),
-        'timestamp': arrow.utcnow().int_timestamp,
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'price': 2.00,
         'amount': 30.0,
         'filled': 0.0,
@@ -2185,9 +2219,9 @@ def limit_sell_order_usdt_open():
         'id': 'mocked_limit_sell_usdt',
         'type': 'limit',
         'side': 'sell',
-        'pair': 'mocked',
+        'symbol': 'mocked',
         'datetime': arrow.utcnow().isoformat(),
-        'timestamp': arrow.utcnow().int_timestamp,
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'price': 2.20,
         'amount': 30.0,
         'filled': 0.0,
@@ -2212,6 +2246,7 @@ def market_buy_order_usdt():
         'type': 'market',
         'side': 'buy',
         'symbol': 'mocked',
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'datetime': arrow.utcnow().isoformat(),
         'price': 2.00,
         'amount': 30.0,
@@ -2268,6 +2303,7 @@ def market_sell_order_usdt():
         'type': 'market',
         'side': 'sell',
         'symbol': 'mocked',
+        'timestamp': arrow.utcnow().int_timestamp * 1000,
         'datetime': arrow.utcnow().isoformat(),
         'price': 2.20,
         'amount': 30.0,

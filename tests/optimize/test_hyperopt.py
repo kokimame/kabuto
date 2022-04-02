@@ -63,7 +63,6 @@ def test_setup_hyperopt_configuration_without_arguments(mocker, default_conf, ca
     assert 'datadir' in config
     assert log_has('Using data directory: {} ...'.format(config['datadir']), caplog)
     assert 'timeframe' in config
-    assert not log_has_re('Parameter -i/--ticker-interval detected .*', caplog)
 
     assert 'position_stacking' not in config
     assert not log_has('Parameter --enable-position-stacking detected ...', caplog)
@@ -364,6 +363,8 @@ def test_hyperopt_format_results(hyperopt):
         'locks': [],
         'final_balance': 0.02,
         'rejected_signals': 2,
+        'timedout_entry_orders': 0,
+        'timedout_exit_orders': 0,
         'backtest_start_time': 1619718665,
         'backtest_end_time': 1619718665,
     }
@@ -431,6 +432,8 @@ def test_generate_optimizer(mocker, hyperopt_conf) -> None:
         'config': hyperopt_conf,
         'locks': [],
         'rejected_signals': 20,
+        'timedout_entry_orders': 0,
+        'timedout_exit_orders': 0,
         'final_balance': 1000,
     }
 
