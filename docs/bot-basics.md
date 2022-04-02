@@ -24,7 +24,7 @@ By default, loop runs every few seconds (`internals.process_throttle_secs`) and 
 
 * Fetch open trades from persistence.
 * Calculate current list of tradable pairs.
-* Download ohlcv data for the pairlist including all [informative pairs](strategy-customization.md#get-data-for-non-tradeable-pairs)  
+* Download OHLCV data for the pairlist including all [informative pairs](strategy-customization.md#get-data-for-non-tradeable-pairs)  
   This step is only executed once per Candle to avoid unnecessary network traffic.
 * Call `bot_loop_start()` strategy callback.
 * Analyze strategy per pair.
@@ -62,6 +62,7 @@ This loop will be repeated again and again until the bot is stopped.
   * Check position adjustments for open trades if enabled and call `adjust_trade_position()` to determine if an additional order is requested.
   * Call `custom_stoploss()` and `custom_sell()` to find custom exit points.
   * For sells based on sell-signal and custom-sell: Call `custom_exit_price()` to determine exit price (Prices are moved to be within the closing candle).
+  * Check for Order timeouts, either via the `unfilledtimeout` configuration, or via `check_buy_timeout()` / `check_sell_timeout()` strategy callbacks.
 * Generate backtest report output
 
 !!! Note
