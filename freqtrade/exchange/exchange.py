@@ -306,12 +306,13 @@ class Exchange:
         By default, checks if it's splittable by `/` and both sides correspond to base / quote
         """
         symbol_parts = market['symbol'].split('/')
-        return (len(symbol_parts) == 2 and
-                len(symbol_parts[0]) > 0 and
-                len(symbol_parts[1]) > 0 and
-                symbol_parts[0] == market.get('base') and
-                symbol_parts[1] == market.get('quote')
-                )
+        # return (len(symbol_parts) == 2 and
+        #         len(symbol_parts[0]) > 0 and
+        #         len(symbol_parts[1]) > 0 and
+        #         symbol_parts[0] == market.get('base') and
+        #         symbol_parts[1] == market.get('quote')
+        #         )
+        return True
 
     def klines(self, pair_interval: Tuple[str, str], copy: bool = True) -> DataFrame:
         if pair_interval in self._klines:
