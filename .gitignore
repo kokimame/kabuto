@@ -1,5 +1,7 @@
 credentials_DONT_UPLOAD.py
 playground/
+/kabuto_price.json
+
 # Freqtrade rules
 config*.json
 *.sqlite
