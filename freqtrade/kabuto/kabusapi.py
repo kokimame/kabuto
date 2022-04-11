@@ -128,6 +128,8 @@ def register_whitelist(access_token, whitelist):
             content = json.loads(res.read())
         return content['RegistList']
     except Exception as e:
+        content = json.loads(e.read())
+        print(content)
         raise e
 
 
