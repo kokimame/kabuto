@@ -19,6 +19,7 @@ from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
 from freqtrade.kabuto.dummy_data import dummy_data_generator
 from freqtrade.kabuto.kabusapi import register_whitelist, run_push_listener, get_access_token
+from credentials_DONT_UPLOAD import *
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,10 @@ class Worker:
             if self._config['kabuto']['token'] is None:
                 self._config['kabuto']['token'] = get_access_token()
                 logger.debug(f'KabusAPI: Got Token: {self._config["kabuto"]["token"]}')
+
+            self._config['exchange']['ccxt_config']['ipaddr'] = KABUSAPI_HOST
+            self._config['exchange']['ccxt_config']['password'] = KABUSAPI_LIVE_PW
+            self._config['exchange']['ccxt_config']['apiKey'] = self._config['kabuto']['token']
 
             is_dummy_enabled = self._config['kabuto']['dummy']['enabled']
             if is_dummy_enabled:
