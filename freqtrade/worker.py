@@ -8,6 +8,7 @@ import traceback
 from glob import glob
 from multiprocessing.context import Process
 from os import getpid
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
 import sdnotify
@@ -105,6 +106,9 @@ class Worker:
                                               # cannot be accessed at this point
                                               self._config['exchange']['pair_whitelist'])
                 database_path = self._config['kabuto']['database_path']
+                # TODO: Maybe find a better way to clear exsiting data
+                if Path(database_path).exists():
+                    os.remove(database_path)
                 logger.debug(f'KabusAPI: Registered List -> {registry}')
                 Process(target=run_push_listener, args=(
                     database_path,

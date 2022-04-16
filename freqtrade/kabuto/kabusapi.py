@@ -54,7 +54,8 @@ async def push_listener(pairs, timeframe, database_path):
                                   int_timestamp])
             last_volume[pair] = data['TradingVolume']
 
-            if time.time() - price_last_saved > 2 * timeframe_sec:
+            # TODO: This heuristics is maybe wrong. Find more reliable way to detect a break
+            if time.time() - price_last_saved > 10 * timeframe_sec:
                 print('Data ignored as the update took too much time (probably due to break)')
                 cached_data = {pair: [] for pair in pairs}
 
