@@ -8,7 +8,7 @@ import arrow
 import ccxt
 import websockets
 
-from freqtrade.credentials_DONT_UPLOAD import *
+from freqtrade.kabuto.credentials import KabutoCredential as kCred
 
 limit = 1000
 DATABASE_PATH = ''
@@ -28,7 +28,7 @@ def timeframe_to_seconds(timeframe: str) -> int:
 async def push_listener(pairs, timeframe, database_path):
     # NOTE: ping_timeout=None is requred since heartbeat is not supported on the server side
     # See a related issue on https://github.com/kabucom/kabusapi/issues/8
-    async with websockets.connect(f'ws://{KABUSAPI_LIVE_HOST}/kabusapi/websocket',
+    async with websockets.connect(f'ws://{kCred.host_live}/kabusapi/websocket',
                                   ping_timeout=None) as ws:
         market_data = {pair: [] for pair in pairs}
         cached_data = {pair: [] for pair in pairs}
@@ -112,7 +112,7 @@ def parse_kabus_ticker(pair):
 
 
 def register_whitelist(access_token, whitelist):
-    url = f'http://{KABUSAPI_LIVE_HOST}/kabusapi/register'
+    url = f'http://{kCred.host_live}/kabusapi/register'
 
     symbols = {'Symbols': []}
     for pair in whitelist:
@@ -135,8 +135,8 @@ def register_whitelist(access_token, whitelist):
 
 
 def get_access_token():
-    kabusapi_url = f'http://{KABUSAPI_LIVE_HOST}'
-    obj = {'APIPassword': KABUSAPI_LIVE_PW}
+    kabusapi_url = f'http://{kCred.host_live}'
+    obj = {'APIPassword': kCred.password_live}
     json_data = json.dumps(obj).encode('utf8')
 
     url = f'{kabusapi_url}/kabusapi/token'
@@ -153,7 +153,7 @@ def get_access_token():
 
 def fetch_order_book(access_token, pair, limit=None, params={}):
     symbol, exchange = parse_kabus_ticker(pair)
-    url = f'http://{KABUSAPI_LIVE_HOST}/kabusapi/board/{symbol}@{exchange}'
+    url = f'http://{kCred.host_live}/kabusapi/board/{symbol}@{exchange}'
     req = urllib.request.Request(url, method='GET')
     req.add_header('Content-Type', 'application/json')
     req.add_header('X-API-KEY', access_token)

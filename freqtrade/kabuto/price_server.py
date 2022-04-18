@@ -1,14 +1,20 @@
 import asyncio
 import json
 import os
+import time
 from dataclasses import dataclass
+from datetime import datetime
 from multiprocessing.context import Process
 from pathlib import Path
 
 import arrow
 import numpy as np
 import uvicorn
+import websockets
 from fastapi import FastAPI
+
+import ccxt
+from freqtrade.kabuto.credentials import KabutoCredential as kCred
 
 
 @dataclass
@@ -25,6 +31,7 @@ class PriceServer:
     def __init__(self, config):
         self.dummy_enabled: bool = config['kabuto']['dummy']['enabled']
         self.timeframe = config['timeframe']
+        self.timeframe_sec = self.timeframe_to_seconds(config['timeframe'])
         self.pairlist = config['exchange']['pair_whitelist']
         self.access_token = config['kabuto']['token']
         self.intervals = ['1m']
@@ -60,11 +67,13 @@ class PriceServer:
         )
 
     async def serve_price(self, symbol, interval):
-        if self.dummy_enabled:
-            # TODO: Read OHLCV data from the database
+        # TODO: Read OHLCV data from the database
+        try:
             with open(self.database_path, 'r') as f:
                 data = json.load(f)
-            return {symbol: str(data[f'{symbol}/JPY'])}
+        except FileNotFoundError:
+            data = {f'{symbol}/JPY': []}
+        return {symbol: str(data[f'{symbol}/JPY'])}
 
     def prepare_data(self, pairs, limit):
         dummy_data = {}
@@ -120,16 +129,81 @@ class PriceServer:
 
         server_task = asyncio.create_task(self.write_dummy(dummy_data))
         # api_task = asyncio.create_task(self.run())
-        return await asyncio.gather(server_task,)
+        return await asyncio.gather(server_task, )
+
+    async def push_listener(self):
+        # NOTE: ping_timeout=None is requred since heartbeat is not supported on the server side
+        # See a related issue on https://github.com/kabucom/kabusapi/issues/8
+        async with websockets.connect(f'ws://{kCred.host_live}/kabusapi/websocket', ping_timeout=None) as ws:
+            market_data = {pair: [] for pair in self.pairlist}
+            cached_data = {pair: [] for pair in self.pairlist}
+            last_volume = {pair: None for pair in self.pairlist}
+            price_last_saved = time.time()
+
+            while not ws.closed:
+                res = await ws.recv()
+                data = json.loads(res)
+                # print(f'{timeframe_sec - (time.time() - price_last_saved):.2f}')
+                symbol, exchange = data['Symbol'], data['Exchange']
+                pair = f'{symbol}@{exchange}/JPY'
+
+                # Drop the first data to compute the relative increase of volume
+                if last_volume[pair] is None:
+                    last_volume[pair] = data['TradingVolume']
+                    continue
+
+                cache_by_pair = cached_data[pair]
+                int_timestamp = arrow.utcnow().int_timestamp * 1000
+                cache_by_pair.append([data['CurrentPrice'],
+                                      data['TradingVolume'] - last_volume[pair],
+                                      int_timestamp])
+                last_volume[pair] = data['TradingVolume']
+
+                # TODO: This heuristics is maybe wrong. Find more reliable way to detect a break
+                if time.time() - price_last_saved > 10 * self.timeframe_sec:
+                    print('Data ignored as the update took too much time (probably due to break)')
+                    cached_data = {pair: [] for pair in self.pairlist}
+
+                if time.time() - price_last_saved > self.timeframe_sec:
+                    for pair, cache in cached_data.items():
+                        if len(cache) > 0:  # Only if data cached in the timeframe
+                            o, c = cache[0][0], cache[-1][0]
+                            h, l = max(d[0] for d in cache), min(d[0] for d in cache)
+                            v = sum(d[1] for d in cache)
+                            t = cache[-1][2]  # Last timestamp
+                            market_data[pair].append([t, o, h, l, c, v, 0])
+                            if len(market_data[pair]) > self.dynamics.limit:
+                                del market_data[pair][0]
+                            print(f'\nUpdate @ {datetime.now()} {pair}: {market_data[pair][-1]}')
+                        else:  # Save the last OHLCV if no data updated in the timeframe
+                            if len(market_data[pair]) > 0:
+                                last_ohlcv = market_data[pair][-1]
+                                market_data[pair].append(last_ohlcv)
+
+                    # Save data after receiving updates
+                    with open(self.database_path, 'w') as f:
+                        # NOTE Having indentation with extra memory may delay the process
+                        json.dump(market_data, f, indent=1)
+
+                        price_last_saved = time.time()
+                    cached_data = {pair: [] for pair in self.pairlist}
 
     def start_generation(self):
         asyncio.run(self.data_generation())
 
     def start_listener(self):
-        pass
+        asyncio.run(self.push_listener())
 
-    async def push_listener(self):
-        pass
+    @staticmethod
+    def timeframe_to_seconds(timeframe: str) -> int:
+        """
+        While this is the same with the one in exchange_beta, avoid circular import.
+        There should be a better work-around.
+        Translates the timeframe interval value written in the human readable
+        form ('1m', '5m', '1h', '1d', '1w', etc.) to the number
+        of seconds for one timeframe interval.
+        """
+        return ccxt.Exchange.parse_timeframe(timeframe)
 
     def listen(self):
         pass
