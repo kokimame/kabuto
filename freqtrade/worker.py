@@ -18,7 +18,7 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.kabuto.kabusapi import register_whitelist, run_push_listener, get_access_token
+from freqtrade.kabuto.kabusapi import run_push_listener, get_access_token
 from freqtrade.kabuto.credentials import KabutoCredential as kCred
 from freqtrade.kabuto.price_server import PriceServer
 
@@ -93,18 +93,14 @@ class Worker:
                 # that the socket output is bound to the logger.
                 Process(target=pserv.start_generation).start()
             else:
+                registry = pserv.register()
+                logger.debug(f'KabusAPI: Registered List -> {registry}')
                 # Use the real data from KabusAPI
-                registry = register_whitelist(self._config['kabuto']['token'],
-                                              # FIXME: This does not support the wildcard expression
-                                              # such as ".*/JPY". Temporary fix since
-                                              # freqtrade.pairlists.whitelist
-                                              # cannot be accessed at this point
-                                              self._config['exchange']['pair_whitelist'])
                 database_path = self._config['kabuto']['database_path']
                 # TODO: Maybe find a better way to clear exsiting data
                 if Path(database_path).exists():
                     os.remove(database_path)
-                logger.debug(f'KabusAPI: Registered List -> {registry}')
+
                 Process(target=run_push_listener, args=(
                     database_path,
                     self._config['exchange']['pair_whitelist'],

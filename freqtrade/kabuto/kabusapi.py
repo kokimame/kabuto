@@ -111,29 +111,6 @@ def parse_kabus_ticker(pair):
     return symbol, exchange
 
 
-def register_whitelist(access_token, whitelist):
-    url = f'http://{kCred.host_live}/kabusapi/register'
-
-    symbols = {'Symbols': []}
-    for pair in whitelist:
-        symbol, exchange = parse_kabus_ticker(pair)
-        symbols['Symbols'].append({'Symbol': symbol, 'Exchange': exchange})
-
-    json_data = json.dumps(symbols).encode('utf8')
-    req = urllib.request.Request(url, json_data, method='PUT')
-    req.add_header('Content-Type', 'application/json')
-    req.add_header('X-API-KEY', access_token)
-
-    try:
-        with urllib.request.urlopen(req) as res:
-            content = json.loads(res.read())
-        return content['RegistList']
-    except Exception as e:
-        content = json.loads(e.read())
-        print(content)
-        raise e
-
-
 def get_access_token():
     kabusapi_url = f'http://{kCred.host_live}'
     obj = {'APIPassword': kCred.password_live}
@@ -186,6 +163,4 @@ if __name__ == '__main__':
     ]
     token = get_access_token()
     print(f'Token -> {token}')
-    registry = register_whitelist(token, whitelist)
-    print(f'Registered List -> {registry}')
     run_push_listener('./test_real_price.json', whitelist, '1m')

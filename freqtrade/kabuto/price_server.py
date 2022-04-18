@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import time
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from multiprocessing.context import Process
@@ -212,7 +213,37 @@ class PriceServer:
         pass
 
     def register(self):
-        pass
+        # Register pairlist in watch list and receive PUSH data
+        url = f'http://{kCred.host_live}/kabusapi/register'
+
+        symbols = {'Symbols': []}
+        for pair in self.pairlist:
+            symbol, exchange = self.parse_ticker(pair)
+            symbols['Symbols'].append({'Symbol': symbol, 'Exchange': exchange})
+
+        json_data = json.dumps(symbols).encode('utf8')
+        req = urllib.request.Request(url, json_data, method='PUT')
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('X-API-KEY', self.access_token)
+
+        try:
+            with urllib.request.urlopen(req) as res:
+                content = json.loads(res.read())
+            return content['RegistList']
+        except Exception as e:
+            content = json.loads(e.read())
+            print(content)
+            raise e
+
+    @staticmethod
+    def parse_ticker(pair):
+        assert len(pair.split('/')) == 2
+        identifier, _ = pair.split('/')
+        assert len(identifier.split('@')) == 2
+        symbol, exchange = identifier.split('@')
+        assert symbol.isnumeric() and exchange.isnumeric()
+        exchange = int(exchange)
+        return symbol, exchange
 
 
 if __name__ == '__main__':
