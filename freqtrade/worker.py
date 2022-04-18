@@ -18,7 +18,6 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.kabuto.kabusapi import run_push_listener, get_access_token
 from freqtrade.kabuto.credentials import KabutoCredential as kCred
 from freqtrade.kabuto.price_server import PriceServer
 
@@ -75,23 +74,20 @@ class Worker:
                     os.remove(database_path)
                     logger.debug(f'Removed {database_path} in initialization')
 
-            # Remove the existing dryrun database for debugging
-            if self._config['kabuto']['token'] is None:
-                self._config['kabuto']['token'] = get_access_token()
-                logger.debug(f'KabusAPI: Got Token: {self._config["kabuto"]["token"]}')
-
             self._config['exchange']['ccxt_config']['ipaddr'] = kCred.host_ipaddr
             self._config['exchange']['ccxt_config']['password'] = kCred.password_live
             self._config['exchange']['ccxt_config']['apiKey'] = self._config['kabuto']['token']
 
             pserv = PriceServer(self._config)
+            self._config['kabuto']['token'] = pserv.access_token
+            logger.debug(f'KabusAPI: Got Token: {pserv.access_token}')
 
             if pserv.dummy_enabled:
-                logger.debug('Start running dummy data server & client')
                 # It's possible to share the process between dummy server & main bot process.
                 # However, we use multiprocess since it is slightly inconvenient while debugging
                 # that the socket output is bound to the logger.
                 Process(target=pserv.start_generation).start()
+                logger.debug('Running dummy data server')
             else:
                 registry = pserv.register()
                 logger.debug(f'KabusAPI: Registered List -> {registry}')
@@ -100,12 +96,8 @@ class Worker:
                 # TODO: Maybe find a better way to clear exsiting data
                 if Path(database_path).exists():
                     os.remove(database_path)
-
-                Process(target=run_push_listener, args=(
-                    database_path,
-                    self._config['exchange']['pair_whitelist'],
-                    self._config['timeframe']
-                )).start()
+                Process(target=pserv.start_listener).start()
+                logger.debug(f'Listening PUSH data at {kCred.host_live}')
 
     def _notify(self, message: str) -> None:
         """

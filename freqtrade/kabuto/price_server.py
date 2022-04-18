@@ -32,10 +32,10 @@ class PriceServer:
     def __init__(self, config):
         self.dummy_enabled: bool = config['kabuto']['dummy']['enabled']
         self.timeframe = config['timeframe']
-        self.timeframe_sec = self.timeframe_to_seconds(config['timeframe'])
         self.pairlist = config['exchange']['pair_whitelist']
-        self.access_token = config['kabuto']['token']
-        self.intervals = ['1m']
+        self.possible_timeframes = ['5s', '1m', '1d']  # Possible timeframe the server can serve
+        self.timeframe_sec = self.timeframe_to_seconds(config['timeframe'])
+        self.access_token = self.get_token()
 
         self.dynamics = PriceDynamics(mu=0.5)
 
@@ -211,6 +211,23 @@ class PriceServer:
 
     def save(self):
         pass
+
+    @staticmethod
+    def get_token():
+        kabusapi_url = f'http://{kCred.host_live}'
+        obj = {'APIPassword': kCred.password_live}
+        json_data = json.dumps(obj).encode('utf8')
+
+        url = f'{kabusapi_url}/kabusapi/token'
+        req = urllib.request.Request(url, json_data, method='POST')
+        req.add_header('Content-Type', 'application/json')
+
+        try:
+            with urllib.request.urlopen(req) as res:
+                content = json.loads(res.read())
+                return content['Token']
+        except Exception as e:
+            raise e
 
     def register(self):
         # Register pairlist in watch list and receive PUSH data
