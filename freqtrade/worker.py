@@ -21,6 +21,7 @@ from freqtrade.freqtradebot import FreqtradeBot
 from freqtrade.kabuto.dummy_data import dummy_data_generator
 from freqtrade.kabuto.kabusapi import register_whitelist, run_push_listener, get_access_token
 from credentials_DONT_UPLOAD import *
+from freqtrade.kabuto.price_server import PriceServer
 
 logger = logging.getLogger(__name__)
 
@@ -84,19 +85,14 @@ class Worker:
             self._config['exchange']['ccxt_config']['password'] = KABUSAPI_LIVE_PW
             self._config['exchange']['ccxt_config']['apiKey'] = self._config['kabuto']['token']
 
-            is_dummy_enabled = self._config['kabuto']['dummy']['enabled']
-            if is_dummy_enabled:
-                logger.debug('Start running dummy data server & client')
-                database_path = self._config['kabuto']['dummy']['database_path']
+            pserv = PriceServer(self._config)
 
+            if pserv.dummy_enabled:
+                logger.debug('Start running dummy data server & client')
                 # It's possible to share the process between dummy server & main bot process.
                 # However, we use multiprocess since it is slightly inconvenient while debugging
                 # that the socket output is bound to the logger.
-                Process(target=dummy_data_generator, args=(
-                    database_path,
-                    self._config['exchange']['pair_whitelist'],
-                    self._config['timeframe']
-                )).start()
+                Process(target=pserv.start_generation).start()
             else:
                 # Use the real data from KabusAPI
                 registry = register_whitelist(self._config['kabuto']['token'],
