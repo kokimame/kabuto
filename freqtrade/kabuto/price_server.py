@@ -45,7 +45,7 @@ class PriceServer:
         else:
             self.database_path = './kabuto_live.json'
 
-        # TODO: Maybe find a better way to clear exsiting data
+        # TODO: Maybe find a better way to clear exiting data
         if Path(self.database_path).exists():
             os.remove(self.database_path)
 
