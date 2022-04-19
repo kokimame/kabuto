@@ -39,10 +39,15 @@ class PriceServer:
 
         self.dynamics = PriceDynamics(mu=0.5)
 
+        # TODO: Set path to InfluxDB (or any other more well-equipped? DB)
         if self.dummy_enabled:
-            self.database_path = config['kabuto']['dummy']['database_path']
+            self.database_path = './kabuto_dummy.json'
         else:
-            self.database_path = config['kabuto']['database_path']
+            self.database_path = './kabuto_live.json'
+
+        # TODO: Maybe find a better way to clear exsiting data
+        if Path(self.database_path).exists():
+            os.remove(self.database_path)
 
         self._api = FastAPI()
         self._setup_routes()

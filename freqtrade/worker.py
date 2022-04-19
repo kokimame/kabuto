@@ -89,13 +89,9 @@ class Worker:
                 Process(target=pserv.start_generation).start()
                 logger.debug('Running dummy data server')
             else:
+                # Use the real data from KabusAPI
                 registry = pserv.register()
                 logger.debug(f'KabusAPI: Registered List -> {registry}')
-                # Use the real data from KabusAPI
-                database_path = self._config['kabuto']['database_path']
-                # TODO: Maybe find a better way to clear exsiting data
-                if Path(database_path).exists():
-                    os.remove(database_path)
                 Process(target=pserv.start_listener).start()
                 logger.debug(f'Listening PUSH data at {kCred.host_live}')
 
