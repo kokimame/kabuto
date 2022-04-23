@@ -77,6 +77,7 @@ class Worker:
             self._config['exchange']['ccxt_config']['ipaddr'] = kCred.host_ipaddr
             self._config['exchange']['ccxt_config']['password'] = kCred.password_live
             self._config['exchange']['ccxt_config']['apiKey'] = self._config['kabuto']['token']
+            self._config['exchange']['ccxt_config']['kabusapi_password'] = kCred.kabusapi_password
 
             pserv = PriceServer(self._config)
             self._config['kabuto']['token'] = pserv.access_token
