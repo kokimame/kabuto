@@ -16,8 +16,8 @@ for i, order in enumerate(orders, 1):
     order_type = order["type"].title()
     order_side = order["side"].title()
     order_status = order["status"].title()
-    filled_pct = int(order["filled"] * 100 / order["amount"])
+    filled_pct = int(order["filled"] * 100 / order["amount"]) if order["amount"] > 0 else 'NaN'
     price_str = f'@ {order["price"]} JPY' if order_type == 'Limit' else ''
-    print(f'{order_status} {order_type:6s} Order #{i}: {order_side} {order["symbol"]} {price_str} [{order["datetime"]}]')
+    print(f'{order_status} {order_type:6s} Order #{i}: {order_side} {order["symbol"]} {price_str} [{order["datetime"]}] id:{order["id"]}')
     print(f'Bought {int(order["filled"])} out of {int(order["amount"])} ({filled_pct}%)')
     print()
