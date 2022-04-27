@@ -72,54 +72,11 @@ class PriceServer:
             methods=['GET']
         )
 
-    async def serve_price(self, symbol, interval):
-        # TODO: Read OHLCV data from the database
-        try:
-            with open(self.database_path, 'r') as f:
-                data = json.load(f)
-        except FileNotFoundError:
-            data = {f'{symbol}/JPY': []}
-        return {symbol: str(data[f'{symbol}/JPY'])}
+    def start_generation(self):
+        asyncio.run(self.data_generation())
 
-    def prepare_data(self, pairs, limit):
-        dummy_data = {}
-        for pair in pairs:
-            o = self.dynamics.initial_price
-            h, l, c, v = self._get_hlcv(o)
-            starting_time = arrow.utcnow().int_timestamp * 1000
-            ohlcvs = [[starting_time, o, h, l, c, v, 0]]
-            for i in range(limit - 1):
-                o = ohlcvs[0][4]  # The last close is the next open
-                h, l, c, v = self._get_hlcv(o)
-                timestamp = starting_time - 60 * (i + 1)
-                ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
-            dummy_data[pair] = ohlcvs
-        return dummy_data
-
-    def _get_hlcv(self, open):
-        c = open + np.random.normal(loc=self.dynamics.mu, scale=self.dynamics.sigma)
-        h = max(open, c) + np.random.randint(1, 5)
-        l = min(open, c) - np.random.randint(1, 5)
-
-        v = np.random.randint(10000, 15000)
-        return h, l, c, v
-
-    async def write_dummy(self, dummy_data):
-        pairs = list(dummy_data.keys())
-
-        while True:
-            last_pair_data = {pair: dummy_data[pair][-1] for pair in pairs}
-            t = arrow.utcnow().int_timestamp * 1000
-            for pair, last_data in last_pair_data.items():
-                next_open = last_data[4]  # Last close is the next open price
-                h, l, c, v = self._get_hlcv(next_open)
-                ohlcv = [t, next_open, h, l, c, v, 0]
-                dummy_data[pair].append(ohlcv)
-
-            with open(self.database_path, 'w') as f:
-                json.dump(dummy_data, f, indent=1)
-
-            await asyncio.sleep(np.random.randint(1, 5))
+    def start_listener(self):
+        asyncio.run(self.push_listener())
 
     async def data_generation(self):
         if Path(self.database_path).exists():
@@ -131,7 +88,7 @@ class PriceServer:
 
         # TODO: Use InfluxDB instead
         with open(self.database_path, 'w') as f:
-            json.dump(dummy_data, f, indent=1)
+            json.dump(dummy_data, f)
 
         server_task = asyncio.create_task(self.write_dummy(dummy_data))
         # api_task = asyncio.create_task(self.run())
@@ -188,17 +145,59 @@ class PriceServer:
 
                     # Save data after receiving updates
                     with open(self.database_path, 'w') as f:
-                        # NOTE Having indentation with extra memory may delay the process
-                        json.dump(market_data, f, indent=1)
+                        json.dump(market_data, f)
 
                         price_last_saved = time.time()
                     cached_data = {pair: [] for pair in self.pairlist}
 
-    def start_generation(self):
-        asyncio.run(self.data_generation())
+    async def serve_price(self, symbol, interval):
+        # TODO: Read OHLCV data from the database
+        try:
+            with open(self.database_path, 'r') as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            data = {f'{symbol}/JPY': []}
+        return {symbol: str(data[f'{symbol}/JPY'])}
 
-    def start_listener(self):
-        asyncio.run(self.push_listener())
+    def prepare_data(self, pairs, limit):
+        dummy_data = {}
+        for pair in pairs:
+            o = self.dynamics.initial_price
+            h, l, c, v = self._get_hlcv(o)
+            starting_time = arrow.utcnow().int_timestamp * 1000
+            ohlcvs = [[starting_time, o, h, l, c, v, 0]]
+            for i in range(limit - 1):
+                o = ohlcvs[0][4]  # The last close is the next open
+                h, l, c, v = self._get_hlcv(o)
+                timestamp = starting_time - 60 * (i + 1)
+                ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
+            dummy_data[pair] = ohlcvs
+        return dummy_data
+
+    def _get_hlcv(self, open):
+        c = open + np.random.normal(loc=self.dynamics.mu, scale=self.dynamics.sigma)
+        h = max(open, c) + np.random.randint(1, 5)
+        l = min(open, c) - np.random.randint(1, 5)
+
+        v = np.random.randint(10000, 15000)
+        return h, l, c, v
+
+    async def write_dummy(self, dummy_data):
+        pairs = list(dummy_data.keys())
+
+        while True:
+            last_pair_data = {pair: dummy_data[pair][-1] for pair in pairs}
+            t = arrow.utcnow().int_timestamp * 1000
+            for pair, last_data in last_pair_data.items():
+                next_open = last_data[4]  # Last close is the next open price
+                h, l, c, v = self._get_hlcv(next_open)
+                ohlcv = [t, next_open, h, l, c, v, 0]
+                dummy_data[pair].append(ohlcv)
+
+            with open(self.database_path, 'w') as f:
+                json.dump(dummy_data, f)
+
+            await asyncio.sleep(np.random.randint(1, 5))
 
     @staticmethod
     def timeframe_to_seconds(timeframe: str) -> int:
@@ -210,12 +209,6 @@ class PriceServer:
         of seconds for one timeframe interval.
         """
         return ccxt.Exchange.parse_timeframe(timeframe)
-
-    def listen(self):
-        pass
-
-    def save(self):
-        pass
 
     @staticmethod
     def get_token():
