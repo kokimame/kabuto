@@ -18,9 +18,8 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.kabuto.dummy_data import dummy_data_generator
-from freqtrade.kabuto.kabusapi import register_whitelist, run_push_listener, get_access_token
-from credentials_DONT_UPLOAD import *
+from freqtrade.kabuto.credentials import KabutoCredential as kCred
+from freqtrade.kabuto.price_server import PriceServer
 
 logger = logging.getLogger(__name__)
 
@@ -75,46 +74,27 @@ class Worker:
                     os.remove(database_path)
                     logger.debug(f'Removed {database_path} in initialization')
 
-            # Remove the existing dryrun database for debugging
-            if self._config['kabuto']['token'] is None:
-                self._config['kabuto']['token'] = get_access_token()
-                logger.debug(f'KabusAPI: Got Token: {self._config["kabuto"]["token"]}')
-
-            self._config['exchange']['ccxt_config']['ipaddr'] = KABUSAPI_HOST
-            self._config['exchange']['ccxt_config']['password'] = KABUSAPI_LIVE_PW
+            self._config['exchange']['ccxt_config']['ipaddr'] = kCred.host_ipaddr
+            self._config['exchange']['ccxt_config']['password'] = kCred.password_live
             self._config['exchange']['ccxt_config']['apiKey'] = self._config['kabuto']['token']
+            self._config['exchange']['ccxt_config']['kabusapi_password'] = kCred.kabusapi_password
 
-            is_dummy_enabled = self._config['kabuto']['dummy']['enabled']
-            if is_dummy_enabled:
-                logger.debug('Start running dummy data server & client')
-                database_path = self._config['kabuto']['dummy']['database_path']
+            pserv = PriceServer(self._config)
+            self._config['kabuto']['token'] = pserv.access_token
+            logger.debug(f'KabusAPI: Got Token: {pserv.access_token}')
 
+            if pserv.dummy_enabled:
                 # It's possible to share the process between dummy server & main bot process.
                 # However, we use multiprocess since it is slightly inconvenient while debugging
                 # that the socket output is bound to the logger.
-                Process(target=dummy_data_generator, args=(
-                    database_path,
-                    self._config['exchange']['pair_whitelist'],
-                    self._config['timeframe']
-                )).start()
+                Process(target=pserv.start_generation).start()
+                logger.debug('Running dummy data server')
             else:
                 # Use the real data from KabusAPI
-                registry = register_whitelist(self._config['kabuto']['token'],
-                                              # FIXME: This does not support the wildcard expression
-                                              # such as ".*/JPY". Temporary fix since
-                                              # freqtrade.pairlists.whitelist
-                                              # cannot be accessed at this point
-                                              self._config['exchange']['pair_whitelist'])
-                database_path = self._config['kabuto']['database_path']
-                # TODO: Maybe find a better way to clear exsiting data
-                if Path(database_path).exists():
-                    os.remove(database_path)
+                registry = pserv.register()
                 logger.debug(f'KabusAPI: Registered List -> {registry}')
-                Process(target=run_push_listener, args=(
-                    database_path,
-                    self._config['exchange']['pair_whitelist'],
-                    self._config['timeframe']
-                )).start()
+                Process(target=pserv.start_listener).start()
+                logger.debug(f'Listening PUSH data at {kCred.host_live}')
 
     def _notify(self, message: str) -> None:
         """
