@@ -21,4 +21,4 @@ for order in orders_before:
 orders_after = kabus.fetch_orders()
 
 print(f'# of open orders is {count_open_orders(orders_before)} and '
-      f'it\' {count_open_orders(orders_after)} after cancel_order')
+      f'it\'s {count_open_orders(orders_after)} after cancel_order')
