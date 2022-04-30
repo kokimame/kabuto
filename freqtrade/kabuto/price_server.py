@@ -67,7 +67,7 @@ class PriceServer:
 
     def _setup_routes(self):
         self._api.add_api_route(
-            path='/charts/{symbol}/JPY/{interval}',
+            path='/charts/{market}/{fiat}/{interval}',
             endpoint=self.serve_price,
             methods=['GET']
         )
@@ -83,8 +83,6 @@ class PriceServer:
             os.remove(self.database_path)
 
         dummy_data = self.prepare_data(self.pairlist, self.dynamics.limit)
-        for pair in self.pairlist:
-            dummy_data[pair] = dummy_data[self.pairlist[0]]
 
         # TODO: Use InfluxDB instead
         with open(self.database_path, 'w') as f:
@@ -101,12 +99,11 @@ class PriceServer:
             market_data = {pair: [] for pair in self.pairlist}
             cached_data = {pair: [] for pair in self.pairlist}
             last_volume = {pair: None for pair in self.pairlist}
-            price_last_saved = time.time()
+            time_last_saved = time.time()
 
             while not ws.closed:
                 res = await ws.recv()
                 data = json.loads(res)
-                # print(f'{timeframe_sec - (time.time() - price_last_saved):.2f}')
                 symbol, exchange = data['Symbol'], data['Exchange']
                 pair = f'{symbol}@{exchange}/JPY'
 
@@ -122,12 +119,13 @@ class PriceServer:
                                       int_timestamp])
                 last_volume[pair] = data['TradingVolume']
 
-                # TODO: This heuristics is maybe wrong. Find more reliable way to detect a break
-                if time.time() - price_last_saved > 10 * self.timeframe_sec:
+                # Clear cached candle data when a long break happens since the last data received
+                # TODO: This heuristics is maybe wrong. Find more reliable way to detect & handle a break
+                if time.time() - time_last_saved > 10 * self.timeframe_sec:
                     print('Data ignored as the update took too much time (probably due to break)')
                     cached_data = {pair: [] for pair in self.pairlist}
 
-                if time.time() - price_last_saved > self.timeframe_sec:
+                if time.time() - time_last_saved > self.timeframe_sec:
                     for pair, cache in cached_data.items():
                         if len(cache) > 0:  # Only if data cached in the timeframe
                             o, c = cache[0][0], cache[-1][0]
@@ -147,57 +145,60 @@ class PriceServer:
                     with open(self.database_path, 'w') as f:
                         json.dump(market_data, f)
 
-                        price_last_saved = time.time()
+                        time_last_saved = time.time()
                     cached_data = {pair: [] for pair in self.pairlist}
 
-    async def serve_price(self, symbol, interval):
+    async def serve_price(self, market, fiat, interval):
         # TODO: Read OHLCV data from the database
         try:
             with open(self.database_path, 'r') as f:
                 data = json.load(f)
         except FileNotFoundError:
-            data = {f'{symbol}/JPY': []}
-        return {symbol: str(data[f'{symbol}/JPY'])}
+            data = {f'{market}/{fiat}': []}
+        return {market: str(data[f'{market}/JPY'])}
 
     def prepare_data(self, pairs, limit):
         dummy_data = {}
         for pair in pairs:
-            o = self.dynamics.initial_price
-            h, l, c, v = self._get_hlcv(o)
-            starting_time = arrow.utcnow().int_timestamp * 1000
-            ohlcvs = [[starting_time, o, h, l, c, v, 0]]
-            for i in range(limit - 1):
-                o = ohlcvs[0][4]  # The last close is the next open
-                h, l, c, v = self._get_hlcv(o)
-                timestamp = starting_time - 60 * (i + 1)
-                ohlcvs.insert(0, [timestamp, o, h, l, c, v, 0])
+            ohlcvs = [self._get_tohlcv(limit=limit)]
+            # Prepare for limit - 1 ticks [-(limit - 2), 0]
+            for _ in range(limit):
+                ohlcvs.append(self._get_tohlcv(prev_t=ohlcvs[-1][0], prev_c=ohlcvs[-1][4]))
             dummy_data[pair] = ohlcvs
         return dummy_data
 
-    def _get_hlcv(self, open):
-        c = open + np.random.normal(loc=self.dynamics.mu, scale=self.dynamics.sigma)
-        h = max(open, c) + np.random.randint(1, 5)
-        l = min(open, c) - np.random.randint(1, 5)
+    def _get_tohlcv(self, prev_t=None, prev_c=None, limit=None):
+        if prev_c is None:
+            o = self.dynamics.initial_price
+        else:
+            # Last close is the next open
+            o = prev_c
+        if prev_t is None:
+            assert limit, 'Limit is required to initialize time'
+            starting_time = arrow.utcnow().int_timestamp * 1000
+            t = starting_time + (self.timeframe_sec * 1000) * (-limit)
+        else:
+            t = prev_t + (self.timeframe_sec) * 1000
 
+        c = o + np.random.normal(loc=self.dynamics.mu, scale=self.dynamics.sigma)
+        h = max(o, c) + np.random.randint(1, 5)
+        l = min(o, c) - np.random.randint(1, 5)
         v = np.random.randint(10000, 15000)
-        return h, l, c, v
+        nonce = 0
+        return [t, o, h, l, c, v, nonce]
 
     async def write_dummy(self, dummy_data):
         pairs = list(dummy_data.keys())
 
         while True:
             last_pair_data = {pair: dummy_data[pair][-1] for pair in pairs}
-            t = arrow.utcnow().int_timestamp * 1000
             for pair, last_data in last_pair_data.items():
-                next_open = last_data[4]  # Last close is the next open price
-                h, l, c, v = self._get_hlcv(next_open)
-                ohlcv = [t, next_open, h, l, c, v, 0]
-                dummy_data[pair].append(ohlcv)
+                dummy_data[pair].append(self._get_tohlcv(prev_t=last_data[0], prev_c=last_data[4]))
 
             with open(self.database_path, 'w') as f:
                 json.dump(dummy_data, f)
-
-            await asyncio.sleep(np.random.randint(1, 5))
+            print(f'Dummy generation sleeps for {self.timeframe_sec}')
+            await asyncio.sleep(np.random.randint(self.timeframe_sec))
 
     @staticmethod
     def timeframe_to_seconds(timeframe: str) -> int:
@@ -232,9 +233,9 @@ class PriceServer:
         url = f'http://{kCred.host_live}/kabusapi/register'
 
         symbols = {'Symbols': []}
-        for pair in self.pairlist:
-            symbol, exchange = self.parse_ticker(pair)
-            symbols['Symbols'].append({'Symbol': symbol, 'Exchange': exchange})
+        for symbol in self.pairlist:
+            stock_code, exchange = self.parse_symbol(symbol)
+            symbols['Symbols'].append({'Symbol': stock_code, 'Exchange': exchange})
 
         json_data = json.dumps(symbols).encode('utf8')
         req = urllib.request.Request(url, json_data, method='PUT')
@@ -251,14 +252,14 @@ class PriceServer:
             raise e
 
     @staticmethod
-    def parse_ticker(pair):
+    def parse_symbol(pair):
         assert len(pair.split('/')) == 2
         identifier, _ = pair.split('/')
         assert len(identifier.split('@')) == 2
-        symbol, exchange = identifier.split('@')
-        assert symbol.isnumeric() and exchange.isnumeric()
+        stock_code, exchange = identifier.split('@')
+        assert stock_code.isnumeric() and exchange.isnumeric()
         exchange = int(exchange)
-        return symbol, exchange
+        return stock_code, exchange
 
 
 if __name__ == '__main__':
