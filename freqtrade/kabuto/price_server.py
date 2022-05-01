@@ -246,8 +246,8 @@ class PriceServer:
 
             with open(self.database_path, 'w') as f:
                 json.dump(dummy_data, f)
-            print(f'Dummy generation sleeps for {self.timeframe_sec}')
-            await asyncio.sleep(np.random.randint(self.timeframe_sec))
+            print('Write a dummy OHLCV data for each pair.')
+            await asyncio.sleep(self.timeframe_sec)
 
     @staticmethod
     def timeframe_to_seconds(timeframe: str) -> int:
