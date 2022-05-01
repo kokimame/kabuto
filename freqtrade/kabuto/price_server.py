@@ -3,10 +3,11 @@ import json
 import os
 import time
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from multiprocessing.context import Process
 from pathlib import Path
+from typing import List
 
 import arrow
 import numpy as np
@@ -24,6 +25,38 @@ class PriceDynamics:
     sigma: float = 5.0
     initial_price: int = 500
     limit: int = 100
+
+
+@dataclass
+class Cache:
+    """
+    Cache to store current price data sent from PUSH server
+    and to be used to compute TOHLCV
+    ------
+    data: [[Price, RelativeVolume, Timestamp], ...]
+    last_volume: Last volume informed, used to compute relative volume change
+    """
+    data: List[List] = field(default_factory=list)
+    last_volume: float = None
+
+
+@dataclass()
+class TOHLCV:
+    """
+    Experimental dataclass for TOHCLV data.
+    Only used partially so far.
+    """
+    t: int
+    o: float
+    h: float
+    c: float
+    l: float
+    v: float
+    nonce: int = 0
+
+    def __iter__(self):
+        # Define how
+        yield [self.t, self.o, self.h, self.l, self.c, self.v, self.nonce]
 
 
 class PriceServer:
@@ -94,58 +127,62 @@ class PriceServer:
     async def push_listener(self):
         # NOTE: ping_timeout=None is requred since heartbeat is not supported on the server side
         # See a related issue on https://github.com/kabucom/kabusapi/issues/8
-        async with websockets.connect(f'ws://{kCred.host_live}/kabusapi/websocket', ping_timeout=None) as ws:
+        async with websockets.connect(f'ws://localhost:8765', ping_timeout=None) as ws:
+            # Entire data to be saved in the database (Intended to work with JSON but not very efficient)
             market_data = {pair: [] for pair in self.pairlist}
-            cached_data = {pair: [] for pair in self.pairlist}
-            last_volume = {pair: None for pair in self.pairlist}
+
+            # Cached price within a timeframe.
+            # At the end of the frame, OHLCV will be calculated and appened to the market data
+            caches = {pair: Cache() for pair in self.pairlist}
             time_last_saved = time.time()
 
             while not ws.closed:
-                res = await ws.recv()
-                data = json.loads(res)
-                symbol, exchange = data['Symbol'], data['Exchange']
-                pair = f'{symbol}@{exchange}/JPY'
+                timeout_raised = False
+                try:
+                    res = await asyncio.wait_for(ws.recv(), timeout=self.timeframe_sec)
+                    data = json.loads(res)
+                    stock_code, exchange = data['Symbol'], data['Exchange']
+                    pair = f'{stock_code}@{exchange}/JPY'
+                    print('Add TOHLCV')
+                    # Drop the first data to compute the relative increase of volume
+                    if caches[pair].last_volume is None:
+                        caches[pair].last_volume = data['TradingVolume']
+                        continue
+                    else:
+                        int_timestamp = arrow.utcnow().int_timestamp * 1000
+                        caches[pair].data.append([data['CurrentPrice'],
+                                                  data['TradingVolume'] - caches[pair].last_volume,
+                                                  int_timestamp])
+                        caches[pair].last_volume = data['TradingVolume']
+                except asyncio.TimeoutError:
+                    timeout_raised = True
+                    for pair, ohlcvs in market_data.items():
+                        # Handle in case no prior OHLCV exits
+                        if len(ohlcvs) == 0:
+                            continue
+                        last_close = ohlcvs[-1][4]
+                        int_timestamp = arrow.utcnow().int_timestamp * 1000
+                        caches[pair].data = [[last_close, 0, int_timestamp]]
+                    print('Websocket timeout. Proceed to compute TOHLCV from cache if any.')
 
-                # Drop the first data to compute the relative increase of volume
-                if last_volume[pair] is None:
-                    last_volume[pair] = data['TradingVolume']
-                    continue
-
-                cache_by_pair = cached_data[pair]
-                int_timestamp = arrow.utcnow().int_timestamp * 1000
-                cache_by_pair.append([data['CurrentPrice'],
-                                      data['TradingVolume'] - last_volume[pair],
-                                      int_timestamp])
-                last_volume[pair] = data['TradingVolume']
-
-                # Clear cached candle data when a long break happens since the last data received
-                # TODO: This heuristics is maybe wrong. Find more reliable way to detect & handle a break
-                if time.time() - time_last_saved > 10 * self.timeframe_sec:
-                    print('Data ignored as the update took too much time (probably due to break)')
-                    cached_data = {pair: [] for pair in self.pairlist}
-
-                if time.time() - time_last_saved > self.timeframe_sec:
-                    for pair, cache in cached_data.items():
-                        if len(cache) > 0:  # Only if data cached in the timeframe
-                            o, c = cache[0][0], cache[-1][0]
-                            h, l = max(d[0] for d in cache), min(d[0] for d in cache)
-                            v = sum(d[1] for d in cache)
-                            t = cache[-1][2]  # Last timestamp
-                            market_data[pair].append([t, o, h, l, c, v, 0])
-                            if len(market_data[pair]) > self.price_dynamics.limit:
-                                del market_data[pair][0]
-                            print(f'\nUpdate @ {datetime.now()} {pair}: {market_data[pair][-1]}')
-                        else:  # Save the last OHLCV if no data updated in the timeframe
-                            if len(market_data[pair]) > 0:
-                                last_ohlcv = market_data[pair][-1]
-                                market_data[pair].append(last_ohlcv)
-
+                if time.time() - time_last_saved > self.timeframe_sec or timeout_raised:
+                    print('Writing TOHLCV to JSON')
+                    for pair, cache in caches.items():
+                        if len(cache.data) == 0:
+                            continue
+                        market_data[pair].append(
+                            *TOHLCV(t=cache.data[-1][2],  # Last timestamp
+                                    o=cache.data[0][0], h=max(d[0] for d in cache.data),
+                                    l=min(d[0] for d in cache.data), c=cache.data[-1][0],
+                                    v=sum(d[1] for d in cache.data), nonce=0)
+                        )
+                        print(f'\nUpdate @ {datetime.now()} {pair}: {market_data[pair][-1]}')
+                    # Clear caches
+                    caches = {pair: Cache() for pair in self.pairlist}
+                    time_last_saved = time.time()
                     # Save data after receiving updates
                     with open(self.database_path, 'w') as f:
                         json.dump(market_data, f)
-
-                        time_last_saved = time.time()
-                    cached_data = {pair: [] for pair in self.pairlist}
 
     async def serve_price(self, market, fiat, interval):
         # TODO: Read OHLCV data from the database
@@ -276,6 +313,8 @@ class PriceServer:
 
 
 if __name__ == '__main__':
+    print(*TOHLCV(1, 1, 0, 0, 0, 0, 0))
+
     with open('../../user_data/config_tse.json', 'r') as f:
         config = json.load(f)
     pserv = PriceServer(config)
