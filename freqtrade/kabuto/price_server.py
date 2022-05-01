@@ -30,17 +30,16 @@ class PriceServer:
     API = FastAPI()
 
     def __init__(self, config):
-        self.dummy_enabled: bool = config['kabuto']['dummy']['enabled']
+        self.dummy_config: dict = config['kabuto']['dummy']
         self.timeframe = config['timeframe']
         self.pairlist = config['exchange']['pair_whitelist']
         self.possible_timeframes = ['5s', '1m', '1d']  # Possible timeframe the server can serve
         self.timeframe_sec = self.timeframe_to_seconds(config['timeframe'])
         self.access_token = self.get_token()
-
-        self.dynamics = PriceDynamics(mu=0.5)
+        self.price_dynamics = PriceDynamics(**self.dummy_config['dynamics'])
 
         # TODO: Set path to InfluxDB (or any other more well-equipped? DB)
-        if self.dummy_enabled:
+        if self.dummy_config['enabled']:
             self.database_path = './kabuto_dummy.json'
         else:
             self.database_path = './kabuto_live.json'
@@ -82,7 +81,7 @@ class PriceServer:
         if Path(self.database_path).exists():
             os.remove(self.database_path)
 
-        dummy_data = self.prepare_data(self.pairlist, self.dynamics.limit)
+        dummy_data = self.prepare_data(self.pairlist, self.price_dynamics.limit)
 
         # TODO: Use InfluxDB instead
         with open(self.database_path, 'w') as f:
@@ -133,7 +132,7 @@ class PriceServer:
                             v = sum(d[1] for d in cache)
                             t = cache[-1][2]  # Last timestamp
                             market_data[pair].append([t, o, h, l, c, v, 0])
-                            if len(market_data[pair]) > self.dynamics.limit:
+                            if len(market_data[pair]) > self.price_dynamics.limit:
                                 del market_data[pair][0]
                             print(f'\nUpdate @ {datetime.now()} {pair}: {market_data[pair][-1]}')
                         else:  # Save the last OHLCV if no data updated in the timeframe
@@ -165,11 +164,25 @@ class PriceServer:
             for _ in range(limit):
                 ohlcvs.append(self._get_tohlcv(prev_t=ohlcvs[-1][0], prev_c=ohlcvs[-1][4]))
             dummy_data[pair] = ohlcvs
+
+        if self.dummy_config['real_scale'] and self.price_dynamics.limit == 300:
+            # Insert break if real scale is on and limit is exactly 300 ticks (equals 300 mins = 5hr)
+            for pair in pairs:
+                ohlcvs = dummy_data[pair]
+                bf_close = ohlcvs[150][4]
+                bf_time = ohlcvs[150][0]
+                for i, (t, o, h, l, c, v, nonce) in enumerate(ohlcvs[150:], 150):
+                    ohlcvs[i] = [t + (60 * 60 * 1000), o, h, l, c, v, nonce]
+                # Lunch break is 60 min = 60 ticks
+                for i in range(60):
+                    bf_time += (self.timeframe_sec * 1000)
+                    ohlcvs.insert(150 + i, [bf_time, bf_close, bf_close, bf_close, bf_close, 0, 0])
+
         return dummy_data
 
     def _get_tohlcv(self, prev_t=None, prev_c=None, limit=None):
         if prev_c is None:
-            o = self.dynamics.initial_price
+            o = self.price_dynamics.initial_price
         else:
             # Last close is the next open
             o = prev_c
@@ -180,7 +193,7 @@ class PriceServer:
         else:
             t = prev_t + (self.timeframe_sec) * 1000
 
-        c = o + np.random.normal(loc=self.dynamics.mu, scale=self.dynamics.sigma)
+        c = o + np.random.normal(loc=self.price_dynamics.mu, scale=self.price_dynamics.sigma)
         h = max(o, c) + np.random.randint(1, 5)
         l = min(o, c) - np.random.randint(1, 5)
         v = np.random.randint(10000, 15000)

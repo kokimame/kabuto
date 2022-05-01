@@ -83,7 +83,7 @@ class Worker:
             self._config['kabuto']['token'] = pserv.access_token
             logger.debug(f'KabusAPI: Got Token: {pserv.access_token}')
 
-            if pserv.dummy_enabled:
+            if pserv.dummy_config['enabled']:
                 # It's possible to share the process between dummy server & main bot process.
                 # However, we use multiprocess since it is slightly inconvenient while debugging
                 # that the socket output is bound to the logger.
