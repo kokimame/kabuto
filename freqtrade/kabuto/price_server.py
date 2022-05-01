@@ -127,7 +127,7 @@ class PriceServer:
     async def push_listener(self):
         # NOTE: ping_timeout=None is requred since heartbeat is not supported on the server side
         # See a related issue on https://github.com/kabucom/kabusapi/issues/8
-        async with websockets.connect(f'ws://localhost:8765', ping_timeout=None) as ws:
+        async with websockets.connect(f'ws://{kCred.host_live}/kabusapi/websocket', ping_timeout=None) as ws:
             # Entire data to be saved in the database (Intended to work with JSON but not very efficient)
             market_data = {pair: [] for pair in self.pairlist}
 
@@ -143,7 +143,6 @@ class PriceServer:
                     data = json.loads(res)
                     stock_code, exchange = data['Symbol'], data['Exchange']
                     pair = f'{stock_code}@{exchange}/JPY'
-                    print('Add TOHLCV')
                     # Drop the first data to compute the relative increase of volume
                     if caches[pair].last_volume is None:
                         caches[pair].last_volume = data['TradingVolume']
