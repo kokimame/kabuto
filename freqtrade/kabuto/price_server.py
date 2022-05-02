@@ -54,9 +54,8 @@ class TOHLCV:
     v: float
     nonce: int = 0
 
-    def __iter__(self):
-        # Define how
-        yield [self.t, self.o, self.h, self.l, self.c, self.v, self.nonce]
+    def as_list(self):
+        return [self.t, self.o, self.h, self.l, self.c, self.v, self.nonce]
 
 
 class PriceServer:
@@ -170,10 +169,10 @@ class PriceServer:
                         if len(cache.data) == 0:
                             continue
                         market_data[pair].append(
-                            *TOHLCV(t=cache.data[-1][2],  # Last timestamp
-                                    o=cache.data[0][0], h=max(d[0] for d in cache.data),
-                                    l=min(d[0] for d in cache.data), c=cache.data[-1][0],
-                                    v=sum(d[1] for d in cache.data), nonce=0)
+                            TOHLCV(t=cache.data[-1][2],  # Last timestamp
+                                   o=cache.data[0][0], h=max(d[0] for d in cache.data),
+                                   l=min(d[0] for d in cache.data), c=cache.data[-1][0],
+                                   v=sum(d[1] for d in cache.data), nonce=0).as_list()
                         )
                         print(f'\nUpdate @ {datetime.now()} {pair}: {market_data[pair][-1]}')
                     # Clear caches
@@ -312,7 +311,7 @@ class PriceServer:
 
 
 if __name__ == '__main__':
-    print(*TOHLCV(1, 1, 0, 0, 0, 0, 0))
+    print(TOHLCV(1, 1, 0, 0, 0, 0, 0).as_list())
 
     with open('../../user_data/config_tse.json', 'r') as f:
         config = json.load(f)
