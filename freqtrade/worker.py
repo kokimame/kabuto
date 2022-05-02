@@ -68,7 +68,8 @@ class Worker:
 
     def setup_kabuto(self):
         # When config for Kabuto is used
-        if 'kabuto' in self._config and self._config['kabuto']['enabled']:
+        if self._config['exchange']['name'] == 'kabus':
+            assert 'kabuto' in self._config, 'ERROR: Configuration for kabuto is missing!'
             if self._config['kabuto']['clear_dryrun_history']:
                 for database_path in glob('./*.dryrun.sqlite'):
                     os.remove(database_path)
@@ -77,7 +78,7 @@ class Worker:
             self._config['exchange']['ccxt_config']['ipaddr'] = kCred.host_ipaddr
             self._config['exchange']['ccxt_config']['password'] = kCred.password_live
             self._config['exchange']['ccxt_config']['apiKey'] = self._config['kabuto']['token']
-            self._config['exchange']['ccxt_config']['kabusapi_password'] = kCred.kabucom_password
+            self._config['exchange']['ccxt_config']['kabucom_password'] = kCred.kabucom_password
 
             pserv = PriceServer(self._config)
             self._config['kabuto']['token'] = pserv.access_token

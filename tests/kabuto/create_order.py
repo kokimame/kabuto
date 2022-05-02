@@ -7,7 +7,7 @@ print(ccxt.__version__)
 kabus = ccxt.kabus({
     'ipaddr': kCred.host_ipaddr,
     'password': kCred.password_live,
-    'kabusapi_password': kCred.kabucom_password,
+    'kabucom_password': kCred.kabucom_password,
 })
 
 response = kabus.create_order('9318@1/JPY', 'limit', 'buy', 100, 1)
