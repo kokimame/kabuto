@@ -81,7 +81,7 @@ class Worker:
 
             pserv = PriceServer(self._config)
             self._config['kabuto']['token'] = pserv.access_token
-            logger.debug(f'KabusAPI: Got Token: {pserv.access_token}')
+            logger.info(f'KabusAPI: Got Token: {pserv.access_token}')
 
             if pserv.dummy_config['enabled']:
                 # It's possible to share the process between dummy server & main bot process.
@@ -92,7 +92,7 @@ class Worker:
             else:
                 # Use the real data from KabusAPI
                 registry = pserv.register()
-                logger.debug(f'KabusAPI: Registered List -> {registry}')
+                logger.info(f'KabusAPI: Registered List -> {registry}')
                 Process(target=pserv.start_listener).start()
                 logger.debug(f'Listening PUSH data at {kCred.host_live}')
 
