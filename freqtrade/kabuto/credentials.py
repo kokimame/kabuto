@@ -17,17 +17,17 @@ class Credential:
 
 try:
     with open(f'{os.environ["HOME"]}/.kabuto/credentials.json') as f:
-        CredentialRaw = json.load(f)
+        CREDENTIAL_RAW = json.load(f)
 
-    KabutoCredential = Credential(
-        kabusapi_password=CredentialRaw['KABUCOM_PASSWORD'],
-        kabusapi_id=CredentialRaw['KABUSAPI_ID'],
-        host_ipaddr=CredentialRaw['KABUSAPI_HOST'],
-        host_live=CredentialRaw['KABUSAPI_HOST_LIVE'],
-        host_test=CredentialRaw['KABUSAPI_HOST_TEST'],
-        password_live=CredentialRaw['KABUSAPI_PASSWORD_LIVE'],
-        password_test=CredentialRaw['KABUSAPI_PASSWORD_TEST'],
-        onetime_token=CredentialRaw['KABUSAPI_ONETIME_TOKEN']
+    KABUTO_CREDENTIAL = Credential(
+        kabusapi_password=CREDENTIAL_RAW['KABUCOM_PASSWORD'],
+        kabusapi_id=CREDENTIAL_RAW['KABUSAPI_ID'],
+        host_ipaddr=CREDENTIAL_RAW['KABUSAPI_HOST'],
+        host_live=CREDENTIAL_RAW['KABUSAPI_HOST_LIVE'],
+        host_test=CREDENTIAL_RAW['KABUSAPI_HOST_TEST'],
+        password_live=CREDENTIAL_RAW['KABUSAPI_PASSWORD_LIVE'],
+        password_test=CREDENTIAL_RAW['KABUSAPI_PASSWORD_TEST'],
+        onetime_token=CREDENTIAL_RAW['KABUSAPI_ONETIME_TOKEN']
     )
 except FileNotFoundError:
     print('ERROR: Credential file for kabu STATION API not found!')

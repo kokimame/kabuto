@@ -1,7 +1,7 @@
 import ccxt
 import json
 import os
-from freqtrade.kabuto.credentials import KabutoCredential as kCred
+from freqtrade.kabuto.credentials import KABUTO_CREDENTIAL as kCred
 
 print(ccxt.__version__)
 

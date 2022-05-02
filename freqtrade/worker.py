@@ -18,7 +18,7 @@ from freqtrade.configuration import Configuration
 from freqtrade.enums import State
 from freqtrade.exceptions import OperationalException, TemporaryError
 from freqtrade.freqtradebot import FreqtradeBot
-from freqtrade.kabuto.credentials import KabutoCredential as kCred
+from freqtrade.kabuto.credentials import KABUTO_CREDENTIAL as kCred
 from freqtrade.kabuto.price_server import PriceServer
 
 logger = logging.getLogger(__name__)

@@ -16,7 +16,7 @@ import websockets
 from fastapi import FastAPI
 
 import ccxt
-from freqtrade.kabuto.credentials import KabutoCredential as kCred
+from freqtrade.kabuto.credentials import KABUTO_CREDENTIAL as kCred
 
 
 @dataclass
