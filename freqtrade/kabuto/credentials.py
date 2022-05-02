@@ -17,6 +17,9 @@ class Credential:
 
 try:
     with open(f'{os.environ["HOME"]}/.kabuto/credentials.json') as f:
+        # CREDENTIAL_RAW can be used to hold any credential information even unrelated to the bot,
+        # for example, the API credential of a service you use for fundamental analysis etc.
+        # However, there are some properties necessary to be defined for KABUTO_CREDENTIAL.
         CREDENTIAL_RAW = json.load(f)
 
     KABUTO_CREDENTIAL = Credential(
@@ -41,7 +44,5 @@ except FileNotFoundError:
   "KABUSAPI_PASSWORD_LIVE": "",
   "KABUSAPI_PASSWORD_TEST": "",
   "KABUSAPI_ONETIME_TOKEN": "",
-  "KABUPLUS_ID": "",
-  "KABUPLUS_PASSWORD": ""
 }
  """)
