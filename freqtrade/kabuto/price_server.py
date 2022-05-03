@@ -82,7 +82,6 @@ class PriceServer:
 
         self._api = FastAPI()
         self._setup_routes()
-        Process(target=self.run_blocking).start()
 
     async def run(self):
         config = uvicorn.Config(
@@ -93,7 +92,10 @@ class PriceServer:
         server = uvicorn.Server(config=config)
         await server.serve()
 
-    def run_blocking(self):
+    def start_api(self):
+        Process(target=self._run_blocking).start()
+
+    def _run_blocking(self):
         uvicorn.run(self._api, port=8999)
 
     def _setup_routes(self):
@@ -276,17 +278,21 @@ class PriceServer:
         except Exception as e:
             raise e
 
-    def register(self):
+    def register(self, symbols):
+        """
+        Register symbols to receive PUSHed data of them
+        :param: symbols: List of pair symbols to register (same with self.pairlist)
+        """
         # Register pairlist in watch list and receive PUSH data
         url = f'http://{kCred.host_live}/kabusapi/register'
 
-        symbols = {'Symbols': []}
-        for symbol in self.pairlist:
+        body = {'Symbols': []}
+        for symbol in symbols:
             stock_code, exchange = self.parse_symbol(symbol)
-            symbols['Symbols'].append({'Symbol': stock_code, 'Exchange': exchange})
+            body['Symbols'].append({'Symbol': stock_code, 'Exchange': exchange})
 
-        json_data = json.dumps(symbols).encode('utf8')
-        req = urllib.request.Request(url, json_data, method='PUT')
+        body_str = json.dumps(body).encode('utf8')
+        req = urllib.request.Request(url, body_str, method='PUT')
         req.add_header('Content-Type', 'application/json')
         req.add_header('X-API-KEY', self.access_token)
 
@@ -299,13 +305,58 @@ class PriceServer:
             print(content)
             raise e
 
+    def unregister(self, symbols):
+        """
+        Unregister symbols and do not receive PUSHed data
+        :param: symbols: List of pair symbols to unregister (same with self.pairlist). If none, unregister all.
+        """
+        body = {'Symbols': []}
+        url = f'http://{kCred.host_live}/kabusapi/unregister'
+        if len(symbols) > 0:
+            for symbol in symbols:
+                stock_code, exchange = self.parse_symbol(symbol)
+                body['Symbols'].append(dict(Symbol=stock_code, Exchange=exchange))
+            body_str = json.dumps(body).encode('utf8')
+            req = urllib.request.Request(url, body_str, method='PUT')
+            req.add_header('Content-Type', 'application/json')
+            req.add_header('X-API-KEY', self.access_token)
+
+            try:
+                with urllib.request.urlopen(req) as res:
+                    content = json.loads(res.read())
+                    return content['RegistList']
+            except Exception as e:
+                content = json.loads(e.read())
+                print(content)
+                raise e
+
+    def unregister_all(self):
+        """
+        Unregister all symbols from PUSH
+        """
+        body = {'Symbols': []}
+        url = f'http://{kCred.host_live}/kabusapi/unregister/all'
+        body_str = json.dumps(body).encode('utf8')
+        req = urllib.request.Request(url, body_str, method='PUT')
+        req.add_header('Content-Type', 'application/json')
+        req.add_header('X-API-KEY', self.access_token)
+
+        try:
+            with urllib.request.urlopen(req) as res:
+                content = json.loads(res.read())
+                return content['RegistList']
+        except Exception as e:
+            content = json.loads(e.read())
+            print(content)
+            raise e
+
     @staticmethod
     def parse_symbol(pair):
         assert len(pair.split('/')) == 2
         identifier, _ = pair.split('/')
         assert len(identifier.split('@')) == 2
         stock_code, exchange = identifier.split('@')
-        assert stock_code.isnumeric() and exchange.isnumeric()
+        assert stock_code.isnumeric() and exchange.isnumeric(), f'ERROR: Unexpected stock code/exhange format {(stock_code, exchange)}'
         exchange = int(exchange)
         return stock_code, exchange
 
@@ -316,4 +367,7 @@ if __name__ == '__main__':
     with open('../../user_data/config_tse.json', 'r') as f:
         config = json.load(f)
     pserv = PriceServer(config)
-    pserv.start_generation()
+    # pserv.start_generation()
+    print(pserv.register(['5020@1/JPY', '8306@1/JPY', '9318@1/JPY']))
+    time.sleep(3)
+    print(pserv.unregister_all())
