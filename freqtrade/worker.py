@@ -79,9 +79,11 @@ class Worker:
             self._config['exchange']['ccxt_config']['password'] = kCred.password_live
             self._config['exchange']['ccxt_config']['kabucom_password'] = kCred.kabucom_password
 
+            logger.info(f'KABUS API: *** Start PriceServer API ***')
             pserv = PriceServer(self._config)
+            pserv.start_api()
             self._config['kabuto']['token'] = pserv.access_token
-            logger.info(f'KabusAPI: Got Token: {pserv.access_token}')
+            logger.info(f'KABUS API: Using Onetime Access Token: {pserv.access_token}')
 
             if pserv.dummy_config['enabled']:
                 # It's possible to share the process between dummy server & main bot process.
@@ -91,8 +93,11 @@ class Worker:
                 logger.debug('Running dummy data server')
             else:
                 # Use the real data from KabusAPI
-                registry = pserv.register()
-                logger.info(f'KabusAPI: Registered List -> {registry}')
+                registry = pserv.unregister_all()
+                assert len(registry) == 0
+                logger.info(f'KABUS API: Clear all existing registries.')
+                registry = pserv.register(pserv.pairlist)
+                logger.info(f'KABUS API: Registered List -> {registry}')
                 Process(target=pserv.start_listener).start()
                 logger.debug(f'Listening PUSH data at {kCred.host_live}')
 
