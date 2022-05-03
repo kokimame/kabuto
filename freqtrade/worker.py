@@ -74,10 +74,10 @@ class Worker:
                 for database_path in glob('./*.dryrun.sqlite'):
                     os.remove(database_path)
                     logger.debug(f'Removed {database_path} in initialization')
-
-            self._config['exchange']['ccxt_config']['ipaddr'] = kCred.host_ipaddr
-            self._config['exchange']['ccxt_config']['password'] = kCred.password_live
-            self._config['exchange']['ccxt_config']['kabucom_password'] = kCred.kabucom_password
+            # Add additional config to be passed to kabus exchange
+            self._config['exchange']['ccxt_config'].update(
+                dict(ipaddr=kCred.host_ipaddr, password=kCred.password_live, kabucom_password=kCred.kabucom_password)
+            )
 
             logger.info(f'KABUS API: *** Start PriceServer API ***')
             pserv = PriceServer(self._config)
