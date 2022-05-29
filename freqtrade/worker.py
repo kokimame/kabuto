@@ -71,7 +71,7 @@ class Worker:
         if self._config['exchange']['name'] == 'kabus':
             assert 'kabuto' in self._config, 'ERROR: Configuration for kabuto is missing!'
             if self._config['kabuto']['clear_dryrun_history']:
-                for database_path in glob('./*.dryrun.sqlite'):
+                for database_path in glob('./*dryrun*.sqlite'):
                     os.remove(database_path)
                     logger.debug(f'Removed {database_path} in initialization')
             # Add additional config to be passed to kabus exchange
