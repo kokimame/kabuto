@@ -73,7 +73,7 @@ def setup_logging_pre() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format=LOGFORMAT,
-        handlers=[logging.StreamHandler(sys.stderr), bufferHandler]
+        handlers=[logging.StreamHandler(sys.stderr), logging.FileHandler('log.txt'), bufferHandler]
     )
 
 
