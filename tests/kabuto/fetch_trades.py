@@ -10,7 +10,7 @@ kabus = ccxt.kabus({
     'kabucom_password': kCred.kabucom_password
 })
 
-trades = kabus.fetch_trades('5020@1/JPY')
+trades = kabus.fetch_trades('2499@1/JPY')
 
 print(trades)
 

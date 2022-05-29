@@ -368,6 +368,6 @@ if __name__ == '__main__':
         config = json.load(f)
     pserv = PriceServer(config)
     # pserv.start_generation()
-    print(pserv.register(['5020@1/JPY', '8306@1/JPY', '9318@1/JPY']))
-    time.sleep(3)
+    # print(pserv.register(['5020@1/JPY', '8306@1/JPY', '9318@1/JPY']))
+    # time.sleep(3)
     print(pserv.unregister_all())
