@@ -124,6 +124,7 @@ class FreqtradeBot(LoggingMixin):
         self.last_process = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
         self.strategy.ft_bot_start()
+        self.total_budget_spent = 0
 
     def notify_status(self, msg: str) -> None:
         """
@@ -620,6 +621,13 @@ class FreqtradeBot(LoggingMixin):
         amount = (stake_amount / enter_limit_requested) * leverage
         order_type = ordertype or self.strategy.order_types['entry']
 
+        # If total budget spent in buying is over the half of total budget
+        if self.total_budget_spent + amount * enter_limit_requested > self.config['trading_budget'] / 2:
+            logger.info(f"Buy request is denied as the new purchase, "
+                        f"which approx. results in {self.total_budget_spent + amount * enter_limit_requested} in total,"
+                        f" may surpass the trading budget ({self.config['trading_budget']}) on liquidation.")
+            return False
+
         if not pos_adjust and not strategy_safe_wrapper(
                 self.strategy.confirm_trade_entry, default_retval=True)(
                 pair=pair, order_type=order_type, amount=amount, rate=enter_limit_requested,
@@ -680,6 +688,7 @@ class FreqtradeBot(LoggingMixin):
             pair=pair, amount=amount, is_short=is_short, open_date=open_date)
         # This is a new trade
         if trade is None:
+            self.total_budget_spent += enter_limit_requested * amount
             trade = Trade(
                 pair=pair,
                 base_currency=base_currency,
