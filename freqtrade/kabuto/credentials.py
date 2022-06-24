@@ -1,7 +1,9 @@
 """
 Create credentials.json under $HOME/.kabuto.
 Write and fill the information in the following format:
-** DONT UPLOAD/SHARE THE CREDENTIAL FILE WITH ANYONE FOR ANY REASON **
+* DONT UPLOAD/SHARE THE CREDENTIAL FILE WITH ANYONE FOR ANY REASON
+* Do `chmod 600 $HOME/.kabuto/credentials.json` to make your file private
+* KABUS_API_ONETIME_TOKEN is optional (but the key should be there)
 {
   "KABUCOM_PASSWORD": "",
   "KABUSAPI_HOST": "xxx.xxx.xxx.xxx",
@@ -9,7 +11,7 @@ Write and fill the information in the following format:
   "KABUSAPI_HOST_TEST": "xxx.xxx.xxx.xxx:port/test",
   "KABUSAPI_PASSWORD_LIVE": "",
   "KABUSAPI_PASSWORD_TEST": "",
-  "KABUSAPI_ONETIME_TOKEN": "",
+  "KABUSAPI_ONETIME_TOKEN": ""
 }
 See the comment in class Credential for mode detail on each property.
 """
