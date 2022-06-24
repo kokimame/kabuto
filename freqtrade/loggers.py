@@ -1,5 +1,6 @@
 import logging
 import sys
+from datetime import datetime
 from logging import Formatter
 from logging.handlers import BufferingHandler, RotatingFileHandler, SysLogHandler
 from typing import Any, Dict
@@ -73,7 +74,7 @@ def setup_logging_pre() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format=LOGFORMAT,
-        handlers=[logging.StreamHandler(sys.stderr), logging.FileHandler('log.txt'), bufferHandler]
+        handlers=[logging.StreamHandler(sys.stderr), logging.FileHandler(f'user_data/logs/log_{datetime.now()}.txt'), bufferHandler]
     )
 
 
