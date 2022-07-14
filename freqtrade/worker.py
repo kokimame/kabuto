@@ -68,7 +68,7 @@ class Worker:
 
     def setup_kabuto(self):
         # When config for Kabuto is used
-        if self._config['exchange']['name'] == 'kabus':
+        if self._config['exchange']['name'] in ['kabus', 'kabusday']:
             assert 'kabuto' in self._config, 'ERROR: Configuration for kabuto is missing!'
             if self._config['kabuto']['clear_dryrun_history']:
                 for database_path in glob('./*dryrun*.sqlite'):
