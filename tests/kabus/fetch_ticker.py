@@ -10,5 +10,5 @@ kabus = ccxt.kabus({
     'password': kCred.password_live
 })
 
-response = kabus.fetch_ticker('8897@1/JPY')
+response = kabus.fetch_ticker('8141@1/JPY')
 print(response)

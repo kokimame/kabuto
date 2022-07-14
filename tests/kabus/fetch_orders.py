@@ -20,5 +20,9 @@ for i, order in enumerate(orders, 1):
     price_str = f'@ {order["price"]} JPY' if order_type == 'Limit' else ''
     action_str = 'Bought' if order_type == 'Buy' else 'Sold'
     print(f'{order_status} {order_type:6s} Order #{i}: {order_side} {order["symbol"]} {price_str} [{order["datetime"]}] id:{order["id"]}')
-    print(f'{action_str} {int(order["filled"])} out of {int(order["amount"])} ({filled_pct}%)')
+    # print(f'{action_str} {int(order["filled"])} out of {int(order["amount"])} ({filled_pct}%)')
+    info = order['info']
+    # del order['info']
+    print(order)
+    # print(info)
     print()
