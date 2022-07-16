@@ -1,7 +1,8 @@
 """Kabus exchange subclass."""
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List, Tuple
 
+from freqtrade.enums import TradingMode, MarginMode
 from freqtrade.exchange import Exchange
 
 
@@ -17,6 +18,13 @@ class Kabusday(Exchange):
     officially supported by the Freqtrade development team. So some features
     may still not work as expected.
     """
+
+    _supported_trading_mode_margin_pairs: List[Tuple[TradingMode, MarginMode]] = [
+        # TradingMode.SPOT always supported and not required in this list
+        # (TradingMode.MARGIN, MarginMode.CROSS),
+        # (TradingMode.FUTURES, MarginMode.CROSS),
+        (TradingMode.FUTURES, MarginMode.ISOLATED)
+    ]
 
     def market_is_tradable(self, market: Dict[str, Any]) -> bool:
         """
