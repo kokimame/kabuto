@@ -1,0 +1,18 @@
+"download_trades": true,
+"exchange": {
+    "name": "kraken",
+    "key": "{{ exchange_key }}",
+    "secret": "{{ exchange_secret }}",
+    "ccxt_config": {"enableRateLimit": true},
+    "ccxt_async_config": {
+        "enableRateLimit": true,
+        "rateLimit": 1000
+        // Enable the below for downoading data.
+        //"rateLimit": 3100
+    },
+    "pair_whitelist": [
+    ],
+    "pair_blacklist": [
+
+    ]
+}

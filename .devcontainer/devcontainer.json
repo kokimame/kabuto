@@ -1,0 +1,39 @@
+{
+    "name": "freqtrade Develop",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    "forwardPorts": [
+        8080
+    ],
+    "mounts": [
+        "source=freqtrade-bashhistory,target=/home/ftuser/commandhistory,type=volume"
+    ],
+    // Uncomment to connect as a non-root user if you've added one. See https://aka.ms/vscode-remote/containers/non-root.
+    "remoteUser": "ftuser",
+
+    "postCreateCommand": "freqtrade create-userdir --userdir user_data/",
+
+    "workspaceFolder": "/freqtrade/",
+
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash",
+        "editor.insertSpaces": true,
+        "files.trimTrailingWhitespace": true,
+        "[markdown]": {
+            "files.trimTrailingWhitespace": false,
+        },
+        "python.pythonPath": "/usr/local/bin/python",
+    },
+
+    // Add the IDs of extensions you want installed when the container is created.
+    "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "davidanson.vscode-markdownlint",
+        "ms-azuretools.vscode-docker",
+        "vscode-icons-team.vscode-icons",
+    ],
+}
