@@ -10,6 +10,6 @@ kabus = ccxt.kabusday({
     'kabucom_password': kCred.kabucom_password,
 })
 
-response = kabus.create_order('9318@1/JPY', 'limit', 'buy', 100, 1, params={'reduceOnly': True})
+response = kabus.create_order('9318@1/JPY', 'limit', 'sell', 100, 1, params={'reduceOnly': False})
 
 print(response)
