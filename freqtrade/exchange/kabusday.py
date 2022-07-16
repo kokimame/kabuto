@@ -1,5 +1,6 @@
 """Kabus exchange subclass."""
 import logging
+from datetime import datetime
 from typing import Dict, Any, List, Tuple
 
 from freqtrade.enums import TradingMode, MarginMode
@@ -26,6 +27,22 @@ class Kabusday(Exchange):
         (TradingMode.FUTURES, MarginMode.ISOLATED)
     ]
 
+    _ft_has: Dict = {
+        "stoploss_on_exchange": True,
+        "stoploss_order_types": {"limit": "stop_loss_limit"},
+        # "order_time_in_force": ['gtc', 'fok', 'ioc'],
+        # "time_in_force_parameter": "timeInForce",
+        # "ohlcv_candle_limit": 1000,
+        # "trades_pagination": "id",
+        # "trades_pagination_arg": "fromId",
+        # "l2_limit_range": [5, 10, 20, 50, 100, 500, 1000],
+        "ccxt_futures_name": "future"
+    }
+
+    def get_funding_fees(
+            self, pair: str, amount: float, is_short: bool, open_date: datetime) -> float:
+        return 0.0
+
     def market_is_tradable(self, market: Dict[str, Any]) -> bool:
         """
         Check if the market symbol is tradable by Freqtrade.
@@ -40,14 +57,6 @@ class Kabusday(Exchange):
         #         )
         return True
 
-    # _ft_has: Dict = {
-    #     "stoploss_on_exchange": True,
-    #     "stoploss_order_types": {"limit": "limit", "market": "market"},
-    #     "l2_limit_range": [20, 100],
-    #     "l2_limit_range_required": False,
-    #     "order_time_in_force": ['gtc', 'fok', 'ioc'],
-    #     "time_in_force_parameter": "timeInForce",
-    # }
     #
     # def stoploss_adjust(self, stop_loss: float, order: Dict) -> bool:
     #     """
