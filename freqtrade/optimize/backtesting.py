@@ -246,6 +246,13 @@ class Backtesting:
             )
         else:
             self.detail_data = {}
+
+        if self.config['exchange']['name'] == 'kabusday':
+            # TODO: Check if funding rate and mark price are not needed in Japanese day-trading
+            for pair in self.pairlists.whitelist:
+                self.futures_data[pair] = pd.DataFrame()
+            return
+
         if self.trading_mode == TradingMode.FUTURES:
             # Load additional futures data.
             funding_rates_dict = history.load_data(
