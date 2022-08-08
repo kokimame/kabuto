@@ -5,49 +5,71 @@
 [![Documentation](https://readthedocs.org/projects/freqtrade/badge/)](https://www.freqtrade.io)
 [![Maintainability](https://api.codeclimate.com/v1/badges/5737e6d668200b7518ff/maintainability)](https://codeclimate.com/github/freqtrade/freqtrade/maintainability)
 
-**Kabuto** は無料かつオープンソースな日本株取引Botです。仮想通貨取引Botの **Freqtrade** と日本株取引の発注基盤である **kabu STATION API** を組み合わせたサービスです。
+Freqtrade is a free and open source crypto trading bot written in Python. It is designed to support all major exchanges and be controlled via Telegram or webUI. It contains backtesting, plotting and money management tools as well as strategy optimization by machine learning.
 
 ![freqtrade](https://raw.githubusercontent.com/freqtrade/freqtrade/develop/docs/assets/freqtrade-screenshot.png)
 
-## 注意
+## Disclaimer
 
-本ソフトウェア（以下Kabuto）は教育的利用に限ります。株式市場を取り巻く需給により株価が変動し投資元本を割り込むことがあります。
-余剰資産を超えた取引はお控えください。ご利用に関する全ての責任は利用者にあります。
-Kabutoの作成者や関係者は貴方の取引結果に関する一切の責任を負いません（詳細はGPL3ライセンスを確認）。
+This software is for educational purposes only. Do not risk money which
+you are afraid to lose. USE THE SOFTWARE AT YOUR OWN RISK. THE AUTHORS
+AND ALL AFFILIATES ASSUME NO RESPONSIBILITY FOR YOUR TRADING RESULTS.
 
-取引Botを使用する際はdry-runから実行し、Botの特性や期待できる損益を正しく理解しましょう。
-Kabutoの利用の前にコーディングやPythonの知識を習得することを強く推奨します。Kabutoのソースコードを読み、Botの仕組みを理解することを勧めます。
+Always start by running a trading bot in Dry-run and do not engage money
+before you understand how it works and what profit/loss you should
+expect.
 
-また、日本株取引にあたり、auカブコム証券での口座開設（Fintechプラン以上）が必要です。
+We strongly recommend you to have coding and Python knowledge. Do not
+hesitate to read the source code and understand the mechanism of this bot.
 
-## Botを利用可能な取引
-- [x] auカブコム証券 現物取引
-- [x] auカブコム証券 デイトレ信用
-- [ ] auカブコム証券 一般/制度信用
-- [x] Freqtradeで利用可能な全ての仮想通貨取引所（詳細はFreqtrade公式ページを確認）
+## Supported Exchange marketplaces
 
+Please read the [exchange specific notes](docs/exchanges.md) to learn about eventual, special configurations needed for each exchange.
 
-## ドキュメント
+- [X] [Binance](https://www.binance.com/)
+- [X] [Bittrex](https://bittrex.com/)
+- [X] [FTX](https://ftx.com/#a=2258149)
+- [X] [Gate.io](https://www.gate.io/ref/6266643)
+- [X] [Huobi](http://huobi.com/)
+- [X] [Kraken](https://kraken.com/)
+- [X] [OKX](https://okx.com/) (Former OKEX)
+- [ ] [potentially many others](https://github.com/ccxt/ccxt/). _(We cannot guarantee they will work)_
 
-日本株取引の場合、Kabutoは貴方のauカブコム証券の口座情報を利用します。口座情報の取扱いについてはこちらをご覧ください。
-その他の日本株取引に関するドキュメントは現在制作中になります。
+### Supported Futures Exchanges (experimental)
 
-Kabutoの大部分を構成するFreqtradeのドキュメントは[こちら](https://www.freqtrade.io)になります。
+- [X] [Binance](https://www.binance.com/)
+- [X] [Gate.io](https://www.gate.io/ref/6266643)
+- [X] [OKX](https://okx.com/).
 
-## Kabutoの特徴
+Please make sure to read the [exchange specific notes](docs/exchanges.md), as well as the [trading with leverage](docs/leverage.md) documentation before diving in.
 
-- **Python 3.8+を利用**: Bot開発と実行はWindows・Mac・LinuxのOS上で可能です
-- **SNSから取引Botを管理・操作**: Manage the bot with Telegram.
-- **Dry-run**: 実際のリアルタイムの相場情報と、資産を使わない仮想取引による取引戦略の性能確認
-- **バックテスト**: 過去の株価データを用いた取引戦略の性能確認
-- **機械学習を用いた取引戦略の最適化**: Use machine learning to optimize your buy/sell strategy parameters with real exchange data.
-- **パーシスタンス**: SQLiteを用いたパーシスタンス（Botやマシンを停止しても問題なし）
-- **Edge position sizing** Calculate your win rate, risk reward ratio, the best stoploss and adjust your position size before taking a position for each specific market. [Learn more](https://www.freqtrade.io/en/stable/edge/).
-- **ホワイトリスト銘柄**: Select which crypto-currency you want to trade or use dynamic whitelists.
-- **ブラックリスト銘柄**: Select which crypto-currency you want to avoid.
-- **ビルトインWebインターフェース**: Freqtradeに付随する可視化Webツール FreqUI に対応
-- **損益の可視化**: Display your profit/loss in fiat currency.
-- **パフォーマンスレポート**: Provide a performance status of your current trades.
+### Community tested
+
+Exchanges confirmed working by the community:
+
+- [X] [Bitvavo](https://bitvavo.com/)
+- [X] [Kucoin](https://www.kucoin.com/)
+
+## Documentation
+
+We invite you to read the bot documentation to ensure you understand how the bot is working.
+
+Please find the complete documentation on the [freqtrade website](https://www.freqtrade.io).
+
+## Features
+
+- [x] **Based on Python 3.8+**: For botting on any operating system - Windows, macOS and Linux.
+- [x] **Persistence**: Persistence is achieved through sqlite.
+- [x] **Dry-run**: Run the bot without paying money.
+- [x] **Backtesting**: Run a simulation of your buy/sell strategy.
+- [x] **Strategy Optimization by machine learning**: Use machine learning to optimize your buy/sell strategy parameters with real exchange data.
+- [x] **Edge position sizing** Calculate your win rate, risk reward ratio, the best stoploss and adjust your position size before taking a position for each specific market. [Learn more](https://www.freqtrade.io/en/stable/edge/).
+- [x] **Whitelist crypto-currencies**: Select which crypto-currency you want to trade or use dynamic whitelists.
+- [x] **Blacklist crypto-currencies**: Select which crypto-currency you want to avoid.
+- [x] **Builtin WebUI**: Builtin web UI to manage your bot.
+- [x] **Manageable via Telegram**: Manage the bot with Telegram.
+- [x] **Display profit/loss in fiat**: Display your profit/loss in fiat currency.
+- [x] **Performance status report**: Provide a performance status of your current trades.
 
 ## Quick start
 
@@ -101,15 +123,14 @@ optional arguments:
 
 ```
 
-### Telegram RPC コマンド
+### Telegram RPC commands
 
-Telegramの利用は任意ですが、SNSを用いたBotの管理や操作は大変便利です。
-詳細はFreqtradeの[ドキュメント](https://www.freqtrade.io/en/latest/telegram-usage/)をご確認ください。
+Telegram is not mandatory. However, this is a great way to control your bot. More details and the full command list on the [documentation](https://www.freqtrade.io/en/latest/telegram-usage/)
 
-- `/start`: Botの実行を開始
-- `/stop`: Botの実行を停止
-- `/stopbuy`: 新規発注を停止
-- `/status <trade_id>|[table]`: 全て または 特定 の取引中の取引の詳細を表示
+- `/start`: Starts the trader.
+- `/stop`: Stops the trader.
+- `/stopbuy`: Stop entering new trades.
+- `/status <trade_id>|[table]`: Lists all or specific open trades.
 - `/profit [<n>]`: Lists cumulative profit from all finished trades, over the last n days.
 - `/forceexit <trade_id>|all`: Instantly exits the given trade (Ignoring `minimum_roi`).
 - `/fx <trade_id>|all`: Alias to `/forceexit`
