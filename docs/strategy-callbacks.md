@@ -82,8 +82,9 @@ Called before entering a trade, makes it possible to manage your position size w
 ```python
 class AwesomeStrategy(IStrategy):
     def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
-                            proposed_stake: float, min_stake: float, max_stake: float,
-                            entry_tag: Optional[str], side: str, **kwargs) -> float:
+                            proposed_stake: float, min_stake: Optional[float], max_stake: float,
+                            leverage: float, entry_tag: Optional[str], side: str,
+                            **kwargs) -> float:
 
         dataframe, _ = self.dp.get_analyzed_dataframe(pair=pair, timeframe=self.timeframe)
         current_candle = dataframe.iloc[-1].squeeze()
@@ -550,7 +551,8 @@ class AwesomeStrategy(IStrategy):
         :param pair: Pair that's about to be bought/shorted.
         :param order_type: Order type (as configured in order_types). usually limit or market.
         :param amount: Amount in target (base) currency that's going to be traded.
-        :param rate: Rate that's going to be used when using limit orders
+        :param rate: Rate that's going to be used when using limit orders 
+                     or current rate for market orders.
         :param time_in_force: Time in force. Defaults to GTC (Good-til-cancelled).
         :param current_time: datetime object, containing the current datetime
         :param entry_tag: Optional entry_tag (buy_tag) if provided with the buy signal.
@@ -600,6 +602,7 @@ class AwesomeStrategy(IStrategy):
         :param order_type: Order type (as configured in order_types). usually limit or market.
         :param amount: Amount in base currency.
         :param rate: Rate that's going to be used when using limit orders
+                     or current rate for market orders.
         :param time_in_force: Time in force. Defaults to GTC (Good-til-cancelled).
         :param exit_reason: Exit reason.
             Can be any of ['roi', 'stop_loss', 'stoploss_on_exchange', 'trailing_stop_loss',
@@ -671,9 +674,10 @@ class DigDeeperStrategy(IStrategy):
     max_dca_multiplier = 5.5
 
     # This is called when placing the initial order (opening trade)
-    def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
+def custom_stake_amount(self, pair: str, current_time: datetime, current_rate: float,
                             proposed_stake: float, min_stake: Optional[float], max_stake: float,
-                            entry_tag: Optional[str], side: str, **kwargs) -> float:
+                            leverage: float, entry_tag: Optional[str], side: str,
+                            **kwargs) -> float:
 
         # We need to leave most of the funds for possible further DCA orders
         # This also applies to fixed stakes
@@ -804,19 +808,23 @@ For markets / exchanges that don't support leverage, this method is ignored.
 
 ``` python
 class AwesomeStrategy(IStrategy):
-    def leverage(self, pair: str, current_time: 'datetime', current_rate: float,
-                 proposed_leverage: float, max_leverage: float, side: str,
+    def leverage(self, pair: str, current_time: datetime, current_rate: float,
+                 proposed_leverage: float, max_leverage: float, entry_tag: Optional[str], side: str,
                  **kwargs) -> float:
         """
-        Customize leverage for each new trade.
+        Customize leverage for each new trade. This method is only called in futures mode.
 
         :param pair: Pair that's currently analyzed
         :param current_time: datetime object, containing the current datetime
         :param current_rate: Rate, calculated based on pricing settings in exit_pricing.
         :param proposed_leverage: A leverage proposed by the bot.
         :param max_leverage: Max leverage allowed on this pair
+        :param entry_tag: Optional entry_tag (buy_tag) if provided with the buy signal.
         :param side: 'long' or 'short' - indicating the direction of the proposed trade
         :return: A leverage amount, which is between 1.0 and max_leverage.
         """
         return 1.0
 ```
+
+All profit calculations include leverage. Stoploss / ROI also include leverage in their calculation.
+Defining a stoploss of 10% at 10x leverage would trigger the stoploss with a 1% move to the downside.
