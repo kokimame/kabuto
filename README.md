@@ -29,7 +29,7 @@ Kabutoの利用の前にコーディングやPythonの知識を習得するこ�
 
 ## ドキュメント
 
-日本株取引の場合、Kabutoは貴方のauカブコム証券の口座情報を利用します。口座情報の取扱いについてはこちらをご覧ください。
+日本株取引の場合、Kabutoは貴方のauカブコム証券の口座情報を利用します。口座情報の取扱いについては[こちら](https://github.com/kokimame/kabuto/blob/dev/freqtrade/kabuto/credentials.py)をご覧ください。
 その他の日本株取引に関するドキュメントは現在制作中になります。
 
 Kabutoの大部分を構成するFreqtradeのドキュメントは[こちら](https://www.freqtrade.io)になります。
