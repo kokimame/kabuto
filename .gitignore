@@ -11,10 +11,15 @@ logfile.txt
 user_data/*
 !user_data/strategy/sample_strategy.py
 !user_data/notebooks
+!user_data/models
+!user_data/freqaimodels
+user_data/freqaimodels/*
+user_data/models/*
 user_data/notebooks/*
 freqtrade-plot.html
 freqtrade-profit-plot.html
 freqtrade/rpc/api_server/ui/*
+build_helpers/ta-lib/*
 
 # Macos related
 .DS_Store
@@ -111,3 +116,4 @@ target/
 !config_examples/config_ftx.example.json
 !config_examples/config_full.example.json
 !config_examples/config_kraken.example.json
+!config_examples/config_freqai.example.json
